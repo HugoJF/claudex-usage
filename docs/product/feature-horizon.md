@@ -7,6 +7,8 @@ Status values: `idea`, `brief`, `spec`, and `done`.
 
 ## V1
 
+- Design system and primitive catalog — `spec`; Direction D is approved and its
+  installable static catalog plus screenshot harness are specified.
 - Unified usage surface — `idea`; one GNOME panel and popup experience for Claude
   and Codex limits.
 - Provider integrations — `idea`; supply live usage while preserving the lifecycle,

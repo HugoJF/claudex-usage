@@ -5,7 +5,8 @@ status: active
 owner: hugo
 created: 2026-07-16
 updated: 2026-07-16
-child_docs: []
+child_docs:
+  - docs/product/specs/2026-07-16-primitive-catalog.md
 tags: [gnome, codex, claude, usage]
 ---
 
