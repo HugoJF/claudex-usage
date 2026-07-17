@@ -8,7 +8,9 @@
 
 ## Briefs
 
-No capabilities have been promoted to a Brief yet.
+| Document | Status | Purpose |
+| --- | --- | --- |
+| [BRIEF-LIVE-USAGE](briefs/2026-07-16-live-usage.md) | draft | Delivers live usage through the unified surface and per-provider adapters. |
 
 ## Specs
 

@@ -9,10 +9,12 @@ Status values: `idea`, `brief`, `spec`, and `done`.
 
 - Design system and primitive catalog — `done`; Direction D is implemented as an
   installable static catalog with its screenshot harness.
-- Unified usage surface — `idea`; one GNOME panel and popup experience for Claude
-  and Codex limits.
-- Provider integrations — `idea`; supply live usage while preserving the lifecycle,
-  credential, and failure constraints in the pitch.
+- Usage surface shell — `brief`; the unified panel item and popup fed by the
+  provider contract ([BRIEF-LIVE-USAGE](briefs/2026-07-16-live-usage.md)).
+- Claude adapter — `brief`; live Claude Code windows from the existing OAuth
+  credential ([BRIEF-LIVE-USAGE](briefs/2026-07-16-live-usage.md)).
+- Codex adapter — `brief`; live Codex windows from an already-running managed
+  app-server ([BRIEF-LIVE-USAGE](briefs/2026-07-16-live-usage.md)).
 
 ## Later / Parking Lot
 

@@ -6,6 +6,7 @@ owner: hugo
 created: 2026-07-16
 updated: 2026-07-16
 child_docs:
+  - docs/product/briefs/2026-07-16-live-usage.md
   - docs/product/specs/2026-07-16-primitive-catalog.md
 tags: [gnome, codex, claude, usage]
 ---
@@ -63,6 +64,4 @@ Codex server produces no stale or misleading value.
   Code on this machine?
 - Is Claude Code process presence sufficient, or must the widget be tied to a
   terminal/window that hosts it?
-- Should a unified indicator appear only when both providers are available, or
-  should each provider independently add and remove its own panel item?
 - What refresh interval balances usefulness and provider/network load?
