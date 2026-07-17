@@ -345,7 +345,7 @@ export class SurfaceController {
                     state.result = result ?? frozen({status: 'unavailable'});
             }
             this._refreshing = false;
-            this._lastCompletedAtMs = this._now();
+            this._lastCompletedAtMs = this._hasEligible() ? this._now() : null;
             this._changed();
             if (this._hasEligible() && this._refreshRequested) {
                 this._refreshRequested = false;

@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | [SPEC-PRIMITIVE-CATALOG](specs/2026-07-16-primitive-catalog.md) | done | Builds the approved GNOME visual primitives and review harness. |
 | [SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md) | done | Ships the production extension shell, provider contract, and persisted preferences. |
-| [SPEC-CODEX-ADAPTER](specs/2026-07-17-codex-adapter.md) | draft | Reads current Codex usage from the existing CLI login without starting it. |
+| [SPEC-CODEX-ADAPTER](specs/2026-07-17-codex-adapter.md) | done | Reads current Codex usage from the existing CLI login without starting it. |
 
 ## Supporting documents
 

@@ -9,11 +9,11 @@ Status values: `idea`, `brief`, `spec`, and `done`.
 
 - Design system and primitive catalog — `done`; Direction D is implemented as an
   installable static catalog with its screenshot harness.
-- Usage surface shell — `done`; provider-free production package, persisted panel
-  preferences, unified panel item, popup, and fail-closed provider slot ([SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)).
+- Usage surface shell — `done`; persisted panel preferences, unified panel item,
+  popup, and fail-closed provider slot ([SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)).
 - Claude adapter — `brief`; live Claude Code windows from the existing OAuth
   credential ([BRIEF-LIVE-USAGE](briefs/2026-07-16-live-usage.md)).
-- Codex adapter — `spec`; live weekly usage through the existing CLI credential while
+- Codex adapter — `done`; live weekly usage through the existing CLI credential while
   a local session is present ([SPEC-CODEX-ADAPTER](specs/2026-07-17-codex-adapter.md)).
 
 ## Later / Parking Lot

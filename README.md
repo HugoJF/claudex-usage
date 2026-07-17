@@ -6,7 +6,7 @@
 
 ![GNOME Shell 50](https://img.shields.io/badge/GNOME%20Shell-50-4a86cf)
 ![GJS](https://img.shields.io/badge/built%20with-GJS-1a5fb4)
-![Status: surface shell](https://img.shields.io/badge/status-surface%20shell-4a86cf)
+![Status: Codex live](https://img.shields.io/badge/status-Codex%20live-4a86cf)
 
 <img src="design/captures/usage-dark-100.png" width="440" alt="Claudex Usage popover showing Claude and Codex usage windows, reset times, and usage history">
 
@@ -38,14 +38,15 @@ These constraints are product-level commitments, not implementation details
 
 ## Project status
 
-The approved visual system and provider-free production surface shell ship today.
-Live Claude Code and Codex adapters are the next milestone.
+The approved visual system, production surface, and live account-weekly Codex adapter
+ship today. The Claude Code adapter is the next provider milestone.
 
 | Capability | Status |
 | --- | --- |
 | Design system and primitive catalog | ✅ Done — Direction D, installable with a screenshot harness |
 | Unified usage surface | ✅ Done — production UUID `claudex-usage@hugo.local`, persisted panel choices, and fail-closed polling while eligible providers exist |
-| Claude Code / Codex provider adapters | 🔜 Planned |
+| Codex provider adapter | ✅ Done — current account-weekly usage from the existing file-backed CLI login |
+| Claude Code provider adapter | 🔜 Planned |
 
 The [feature horizon](docs/product/feature-horizon.md) tracks the full capability map.
 
@@ -53,7 +54,8 @@ The [feature horizon](docs/product/feature-horizon.md) tracks the full capabilit
 
 Every state is captured deterministically from an isolated GNOME Shell 50.1 session.
 J-001 proves the static catalog; J-002 proves the production surface through
-harness-only provider registration, including unavailable and absent states.
+harness-only provider registration; J-004 proves the packaged Codex runtime from
+session presence through credential rotation, unavailable data, and teardown.
 
 | Panel indicator (dark) | Panel indicator (light) |
 | --- | --- |
@@ -113,9 +115,11 @@ log out and back in. To remove the catalog:
 gnome-extensions uninstall claudex-usage-design@hugo.local
 ```
 
-This installs the static design catalog only. The separately packaged production shell
-has UUID `claudex-usage@hugo.local`, starts invisible, and accepts in-process provider
-adapters through its documented contract; no adapter ships in it yet.
+This installs the static design catalog only. The production extension has UUID
+`claudex-usage@hugo.local` and packages the built-in Codex adapter. It becomes visible
+for an exact current-user process named `codex`, reads `CODEX_HOME/auth.json` (or
+`~/.codex/auth.json`) at refresh time, and otherwise stays absent. Keyring-only login
+and a `CODEX_HOME` not inherited by GNOME Shell are unavailable states.
 
 ## Development
 
@@ -147,5 +151,5 @@ spec, docs are the source of truth, and every slice closes through the same gate
 
 Claude and Anthropic are trademarks of Anthropic. Codex, OpenAI, and the Blossom mark
 are trademarks of OpenAI. This is an independent project, not affiliated with or
-endorsed by either company; provider marks are vendored for the local design review
-only (see [provider mark provenance](design/direction-lab/icons/README.md)).
+endorsed by either company; provider marks are vendored for local presentation
+(see [provider mark provenance](design/direction-lab/icons/README.md)).

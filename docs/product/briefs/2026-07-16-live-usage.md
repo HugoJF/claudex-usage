@@ -20,9 +20,9 @@ supersedes: []
 
 ## Problem
 
-The approved visual system exists only as a static catalog with hardcoded values;
-no desktop surface shows real Claude Code or Codex limits. The promise in the
-[pitch](../pitch.md) stays untested until live values reach the panel.
+The production surface now shows Codex's current account-weekly limit. Claude Code
+still lacks an adapter, so the full two-provider promise in the [pitch](../pitch.md)
+remains incomplete.
 
 ## Target User
 
@@ -91,8 +91,8 @@ capability:
 | A surface-only brief would restate its single spec | Resolved — the chapter covers the surface and both adapters; the two horizon ideas merge here. |
 | Unified item vs per-provider items (pitch open question) | Resolved — single unified item; owner decision 2026-07-16, recorded in Constraints. |
 | Approved popup design renders a history chart while local history is parked | Resolved — chart deferred from this chapter; the parked horizon decision stays untouched. |
-| The surface shell alone shows a user nothing | Resolved — shell acceptance uses a stub provider in the isolated review harness; first user value lands with the Claude adapter. |
-| Concrete app IDs, window classes, and process-vs-window detection are unknown | Deferred — open questions on the adapter specs. |
+| The surface shell alone shows a user nothing | Resolved — the Codex adapter now supplies the first live provider value. |
+| Concrete app IDs, window classes, and process-vs-window detection are unknown | Partly resolved — Codex uses an exact current-user `codex` process; Claude detection remains deferred. |
 | The working Codex usage endpoint is internal and may change | Resolved — accepted as the bundle's sole internal-endpoint exception; CODEX-001 freezes a fail-closed fixture contract before CODEX-002 integrates it. |
 | Refresh cadence balancing usefulness and provider load | Resolved — a user-facing cadence choice ships in the surface settings (owner decision 2026-07-16); the value set and default stay decision-log territory. |
 
@@ -103,5 +103,5 @@ were confirmed at the promotion gate.
 
 ## Next Step
 
-Plan CODEX-001 before implementing the Codex adapter: it establishes the accepted
-credential and HTTP response boundary the provider must use.
+Promote and specify the Claude adapter against the shipped provider slot while
+preserving the Codex adapter's fail-closed and no-launch constraints.

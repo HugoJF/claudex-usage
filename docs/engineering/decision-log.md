@@ -52,3 +52,17 @@ compatibility risk as the sole internal Codex endpoint exception; exact-duration
 shape checks surface drift as unavailable rather than guessing. Credential expiry
 remains a later authentication failure: the boundary neither decodes JWT claims nor
 refreshes or initiates login.
+
+## 2026-07-17 — Gate Codex usage on an exact local process
+
+The production adapter treats an exact current-user `/proc/*/comm` value of `codex`
+as eligibility and rescans every two seconds because `/proc` does not provide usable
+create/delete monitor events. It does not read command lines or count processes.
+
+Every eligible refresh rereads file-backed `auth.json`, then performs one cancellable
+request with a 15-second session timeout, redirects disabled, and an exact HTTP 200
+requirement. Auth and response streams have incremental 64 KiB and 256 KiB ceilings
+and fatal UTF-8 decoding. Per-request identity prevents stale cleanup from touching a
+new attempt; the surface also preserves a cleared lifecycle timestamp when a request
+finishes after eligibility disappeared. Keyring-only credentials and relative
+inherited `CODEX_HOME` values fail closed rather than adding another secret source.

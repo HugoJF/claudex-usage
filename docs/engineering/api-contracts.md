@@ -5,7 +5,7 @@
 The production extension accepts in-process GJS adapters through
 `registerProvider(provider)`. Registration returns an idempotent unregister callback.
 It snapshots presentation metadata and retains only the three lifecycle callbacks;
-the installed package registers no provider itself.
+the installed package registers the built-in Codex provider through the same slot.
 
 | Field | Contract |
 | --- | --- |
@@ -52,5 +52,9 @@ limit-state, and relative-reset fields cannot affect the result.
 
 An accepted payload becomes a deeply frozen provider-slot result with one `weekly`
 reading. Every call creates new presentation objects and retains no source reference.
-CODEX-001 leaves the module out of the installed extension; CODEX-002 is its first
-production consumer and owns filesystem access, transport, and provider registration.
+`extension/codex-runtime.js` is the first production consumer. It exports the provider
+factory and runtime, detects an exact current-user `codex` process, reads file-backed
+auth fresh per refresh, and performs the fixed usage request. Auth and response reads
+are fatal-UTF-8 and incrementally bounded at 64 KiB and 256 KiB respectively. The
+runtime follows `CODEX_HOME` only when absolute, allows no redirects, requires HTTP
+200, owns cancellable request identity, and retains no token, raw body, or error.

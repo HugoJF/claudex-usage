@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import {
+    chmodSync,
     copyFileSync,
     cpSync,
     mkdtempSync,
@@ -135,7 +136,7 @@ function assertProductionVerifierRejects(entries) {
     const expectFailure = (fixture, message) => {
         try {
             assertPackageEntries(fixture, 'invalid', ['surface-controller.js',
-                'panel-preferences.js',
+                'panel-preferences.js', 'codex-contract.js', 'codex-runtime.js',
                 'schemas/org.gnome.shell.extensions.claudex-usage.gschema.xml',
                 'icons/claude.svg', 'icons/codex.svg']);
             for (const forbidden of ['catalog-state.js', 'stub-provider.js']) {
@@ -148,6 +149,7 @@ function assertProductionVerifierRejects(entries) {
         throw new Error(`Production package verifier accepted ${message}`);
     };
     for (const required of ['surface-controller.js', 'panel-preferences.js',
+        'codex-contract.js', 'codex-runtime.js',
         'schemas/org.gnome.shell.extensions.claudex-usage.gschema.xml',
         'shared/primitives.js', 'tokens.json',
         'icons/claude.svg']) {
@@ -162,6 +164,53 @@ function assertProductionVerifierRejects(entries) {
     stubFixture.add('stub-provider.js');
     expectFailure(stubFixture, 'a packaged stub');
     process.stdout.write('production package verifier: rejection fixtures passed\n');
+}
+
+function assertCodexSourceSafety() {
+    const source = ['codex-contract.js', 'codex-runtime.js']
+        .map(file => readFileSync(path.join(root, 'extension', file), 'utf8')).join('\n');
+    const forbidden = [/\bGio\.(?:Subprocess|AppInfo)\b/,
+        /\bGLib\.(?:spawn|shell_parse_argv)\b/, /\b(?:AppSystem|GSettings)\b/,
+        /\bcodex\s+(?:login|exec)\b/i, /\bconsole\.(?:log|warn|error)\s*\(/,
+        /\.(?:replace_contents|create|append_to|move|copy)\s*\(/];
+    const verify = value => {
+        if (forbidden.some(pattern => pattern.test(value)))
+            throw new Error('Codex source contains a launch, log, or persistence path');
+    };
+    verify(source);
+    let rejected;
+    try {
+        verify(`${source}\nGio.Subprocess.new(['codex', 'login']);`);
+    } catch { rejected = true; }
+    if (!rejected)
+        throw new Error('Codex source guard accepted a tainted fixture');
+    process.stdout.write('Codex source guard: both verdicts passed\n');
+}
+
+function replaceExactly(file, before, after) {
+    const source = readFileSync(file, 'utf8');
+    if (source.split(before).length !== 2)
+        throw new Error(`Expected one replacement in ${file}`);
+    writeFileSync(file, source.replace(before, after));
+}
+
+function prepareProductionVariant(sourceDir, packageDir, edits) {
+    cpSync(path.join(root, 'extension'), sourceDir, {recursive: true});
+    copyFileSync(path.join(root, 'design/system/tokens.json'),
+        path.join(sourceDir, 'tokens.json'));
+    cpSync(path.join(root, 'design/direction-lab/icons'),
+        path.join(sourceDir, 'icons'), {recursive: true});
+    edits(sourceDir);
+    run('gnome-extensions', [
+        'pack', '--force',
+        '--schema=schemas/org.gnome.shell.extensions.claudex-usage.gschema.xml',
+        '--extra-source=surface-controller.js', '--extra-source=panel-preferences.js',
+        '--extra-source=codex-contract.js', '--extra-source=codex-runtime.js',
+        '--extra-source=shared',
+        '--extra-source=tokens.json', '--extra-source=icons',
+        '--out-dir', packageDir, sourceDir,
+    ]);
+    return path.join(packageDir, 'claudex-usage@hugo.local.shell-extension.zip');
 }
 
 function assertCaptures(captureDir, captures, label, compareCanonical) {
@@ -421,14 +470,25 @@ const proofSourceDir = path.join(temporaryRoot, 'shared-proof');
 const proofPackageDir = path.join(temporaryRoot, 'shared-proof-package');
 const proofJourneyPath = path.join(temporaryRoot, 'shared-proof.journey.js');
 const settingsFixtureDir = path.join(temporaryRoot, 'settings-fixture');
+const fixtureSourceDir = path.join(temporaryRoot, 'fixture-source');
+const fixturePackageDir = path.join(temporaryRoot, 'fixture-package');
+const journeySourceDir = path.join(temporaryRoot, 'journey-source');
+const journeyPackageDir = path.join(temporaryRoot, 'journey-package');
+const fixtureProcRoot = path.join(temporaryRoot, 'empty-proc');
+const journeyProcRoot = path.join(temporaryRoot, 'journey-proc');
+const codexHome = path.join(temporaryRoot, 'codex-home');
+const fakeCodex = path.join(temporaryRoot, 'codex');
 const captureDir = updateCaptures
     ? path.join(root, 'design/captures')
     : path.join(temporaryRoot, 'captures');
-mkdirSync(packageDir, {recursive: true});
-mkdirSync(productionPackageDir, {recursive: true});
-mkdirSync(proofPackageDir, {recursive: true});
-mkdirSync(captureDir, {recursive: true});
-mkdirSync(settingsFixtureDir, {recursive: true});
+for (const directory of [packageDir, productionPackageDir, proofPackageDir,
+    captureDir, settingsFixtureDir, fixturePackageDir, journeyPackageDir,
+    fixtureProcRoot, journeyProcRoot, codexHome])
+    mkdirSync(directory, {recursive: true});
+writeFileSync(path.join(codexHome, 'auth.json'),
+    JSON.stringify({tokens: {access_token: 'journey-token'}}));
+copyFileSync('/usr/bin/python3', fakeCodex);
+chmodSync(fakeCodex, 0o700);
 
 try {
     run('node', ['scripts/doc-lint.mjs', 'docs/product', 'docs/engineering']);
@@ -437,6 +497,7 @@ try {
         'tests/unit/codex-contract.test.js',
         'tests/unit/design-tokens.test.js', 'tests/unit/panel-preferences.test.js',
         'tests/unit/surface-controller.test.js']);
+    run('gjs', ['-m', 'tests/unit/codex-adapter.test.js']);
     run('gnome-extensions', [
         'pack',
         '--force',
@@ -464,6 +525,8 @@ try {
         '--schema=schemas/org.gnome.shell.extensions.claudex-usage.gschema.xml',
         '--extra-source=surface-controller.js',
         '--extra-source=panel-preferences.js',
+        '--extra-source=codex-contract.js',
+        '--extra-source=codex-runtime.js',
         '--extra-source=shared',
         '--extra-source=../design/system/tokens.json',
         '--extra-source=../design/direction-lab/icons',
@@ -475,6 +538,8 @@ try {
     const productionEntries = assertPackage(productionZipPath, 'production', [
         'surface-controller.js',
         'panel-preferences.js',
+        'codex-contract.js',
+        'codex-runtime.js',
         'schemas/org.gnome.shell.extensions.claudex-usage.gschema.xml',
         'icons/claude.svg',
         'icons/claude-light.svg',
@@ -486,6 +551,31 @@ try {
             throw new Error(`production package contains forbidden ${forbidden}`);
     }
     assertProductionVerifierRejects(productionEntries);
+    assertCodexSourceSafety();
+    const fixtureZipPath = prepareProductionVariant(
+        fixtureSourceDir, fixturePackageDir, sourceDir => {
+            replaceExactly(path.join(sourceDir, 'codex-runtime.js'),
+                "        id: 'codex',", "        id: 'codex-installed-fixture',");
+            replaceExactly(path.join(sourceDir, 'extension.js'),
+                'runtime = new CodexRuntime();',
+                `runtime = new CodexRuntime({procRoot: ${JSON.stringify(fixtureProcRoot)}});`);
+        });
+    const journeyZipPath = prepareProductionVariant(
+        journeySourceDir, journeyPackageDir, sourceDir => {
+            replaceExactly(path.join(sourceDir, 'codex-runtime.js'),
+                'https://chatgpt.com/backend-api/wham/usage',
+                'http://127.0.0.1:19876/usage');
+            replaceExactly(path.join(sourceDir, 'extension.js'),
+                'runtime = new CodexRuntime();',
+                `runtime = new CodexRuntime({procRoot: ${JSON.stringify(journeyProcRoot)}});`);
+        });
+    run('dbus-run-session', ['--', 'gnome-shell-test-tool', '--devkit',
+        '--disable-animations', '--extension', journeyZipPath,
+        'tests/journeys/J-004-codex-usage.journey.test.js',
+    ], {
+        env: {...process.env, CODEX_HOME: codexHome, CLAUDEX_FAKE_CODEX: fakeCodex,
+            CLAUDEX_PROC_ROOT: journeyProcRoot},
+    });
     writeSharedConsumer(proofSourceDir, proofJourneyPath);
     run('gnome-extensions', [
         'pack',
@@ -523,7 +613,7 @@ try {
             '--devkit',
             '--disable-animations',
             '--wrap', path.join(root, 'scripts/gsettings-session-wrapper.sh'),
-            '--extension', productionZipPath,
+            '--extension', fixtureZipPath,
             'tests/journeys/J-003-panel-preferences.journey.test.js',
         ], {
             env: {
@@ -539,7 +629,7 @@ try {
         'gnome-shell-test-tool',
         '--devkit',
         '--disable-animations',
-        '--extension', productionZipPath,
+        '--extension', fixtureZipPath,
         'tests/journeys/J-002-usage-surface.journey.test.js',
     ], {
         env: {...process.env, CLAUDEX_CAPTURE_DIR: captureDir},

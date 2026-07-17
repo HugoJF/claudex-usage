@@ -23,6 +23,7 @@ import {
     PANEL_LIMITS,
     readPanelPreferences,
 } from './panel-preferences.js';
+import {createCodexProvider, CodexRuntime} from './codex-runtime.js';
 import {validateTokens} from './shared/token-geometry.js';
 import {SurfaceController} from './surface-controller.js';
 
@@ -80,6 +81,17 @@ export default class ClaudexUsageExtension extends Extension {
             onChange: () => this._render(),
             refreshIntervalMs: this._preferences.refreshInterval.ms,
         });
+        let runtime = null;
+        try {
+            runtime = new CodexRuntime();
+            this._codexRuntime = runtime;
+            this._unregisterCodex = this.registerProvider(
+                createCodexProvider(runtime));
+        } catch {
+            runtime?.dispose();
+            this._codexRuntime = null;
+            this._unregisterCodex = null;
+        }
         this._render();
     }
 
@@ -108,6 +120,10 @@ export default class ClaudexUsageExtension extends Extension {
             this._settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = null;
         }
+        this._unregisterCodex?.();
+        this._unregisterCodex = null;
+        this._codexRuntime?.dispose();
+        this._codexRuntime = null;
         this._controller?.dispose();
         this._controller = null;
         this._destroyIndicator();

@@ -36,11 +36,22 @@ and Node-testable: it validates the provider-slot contract, snapshots presentati
 metadata, coalesces refreshes, and emits presentation models. `extension.js` owns
 `PanelMenu`, GLib timeout ownership, theme changes, actor composition, and teardown.
 
-The installed extension is provider-free. The J-002 harness registers Claude and
-Codex stubs through the real in-process API; neither fixture is present in the ZIP.
+The installed extension registers one built-in Codex provider through the same
+in-process API used by external adapters. J-002 and J-003 use disposable packages
+whose built-in provider is ineligible under a reserved ID, so their Claude and Codex
+stubs remain isolated; no fixture is present in the canonical ZIP.
 One five-minute timer exists only while at least one provider is eligible. A refresh
 starts immediately when the first provider becomes eligible, scheduling begins after
 completion, and failure or ineligibility clears retained readings before rendering.
+
+`codex-runtime.js` scans numeric `/proc` entries every two seconds for an exact
+current-user `codex` command name. While present, each surface refresh opens the
+current file-backed Codex auth JSON and sends one cancellable, non-redirecting request
+to the accepted usage endpoint. Both input streams are bounded during ingress and
+decoded strictly. Absence, malformed data, non-200 status, cancellation, or teardown
+reduces to unavailable without logging, persistence, process launch, or retained
+source values. J-004 keeps this composition intact while substituting only disposable
+endpoint and process-root inputs.
 
 The package declares `org.gnome.shell.extensions.claudex-usage` and includes its
 GSettings schema, which GNOME compiles on installation. It persists only the three panel-visibility booleans and

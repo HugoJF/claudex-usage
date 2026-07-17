@@ -16,9 +16,9 @@ This file contains only Claudex Usage project facts.
 
 - Target desktop: GNOME Shell 50.1 on Linux.
 - Intended UI surface: a GNOME Shell extension written in GJS.
-- Current phase: approved visual system, developer-only primitive catalog, and
-  provider-free production surface with persisted panel preferences; provider
-  adapters remain unimplemented.
+- Current phase: approved visual system, developer-only primitive catalog, persisted
+  panel preferences, and a built-in account-weekly Codex adapter; the Claude adapter
+  remains unimplemented.
 
 ```bash
 npm test
@@ -31,8 +31,8 @@ Use `npm run capture` only when canonical visual evidence must be regenerated.
 ## Architecture
 
 `design/direction-lab` is the developer-installed static Shell extension described
-in `docs/engineering/architecture.md`. The founding provider constraints remain
-canonical in `docs/product/pitch.md`; provider adapters are outside this topology.
+in `docs/engineering/architecture.md`. Provider access stays out of that prototype;
+the production Codex topology is documented separately in the same architecture.
 
 ## Docs Map
 
