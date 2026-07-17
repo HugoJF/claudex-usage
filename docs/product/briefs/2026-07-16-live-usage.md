@@ -1,7 +1,7 @@
 ---
 id: BRIEF-LIVE-USAGE
 type: product-brief
-status: draft
+status: active
 owner: hugo
 created: 2026-07-16
 updated: 2026-07-16
@@ -95,8 +95,8 @@ capability:
 
 ## Decision
 
-Draft — pending owner acceptance. Scope, indicator model, and chart deferral were
-confirmed by the owner at the promotion gate on 2026-07-16.
+Accepted by the owner on 2026-07-16. Scope, indicator model, and chart deferral
+were confirmed at the promotion gate.
 
 ## Next Step
 
