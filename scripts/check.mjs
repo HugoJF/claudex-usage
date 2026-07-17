@@ -21,7 +21,7 @@ const unknownArgs = process.argv.slice(2)
 if (unknownArgs.length > 0)
     throw new Error(`Unknown arguments: ${unknownArgs.join(' ')}`);
 
-const expectedCaptures = [
+const catalogCaptures = [
     'panel-dark-100.png',
     'usage-dark-100.png',
     'usage-range-7d-focus-hover.png',
@@ -30,6 +30,14 @@ const expectedCaptures = [
     'panel-visibility-off.png',
     'panel-light-100.png',
     'panel-dark-200.png',
+];
+const surfaceCaptures = [
+    'surface-panel-dark-100.png',
+    'surface-popup-dark-100.png',
+    'surface-refresh-focus-hover.png',
+    'surface-unavailable-popup.png',
+    'surface-panel-light-100.png',
+    'surface-panel-dark-200.png',
 ];
 
 function run(command, args, options = {}) {
@@ -119,8 +127,37 @@ function assertVerifierRejects(entries) {
     process.stdout.write('package verifier: rejection fixtures passed\n');
 }
 
-function assertCaptures(captureDir, compareCanonical) {
-    for (const filename of expectedCaptures) {
+function assertProductionVerifierRejects(entries) {
+    const expectFailure = (fixture, message) => {
+        try {
+            assertPackageEntries(fixture, 'invalid', ['surface-controller.js',
+                'icons/claude.svg', 'icons/codex.svg']);
+            for (const forbidden of ['catalog-state.js', 'stub-provider.js']) {
+                if (fixture.has(forbidden))
+                    throw new Error(`invalid package contains ${forbidden}`);
+            }
+        } catch {
+            return;
+        }
+        throw new Error(`Production package verifier accepted ${message}`);
+    };
+    for (const required of ['surface-controller.js', 'shared/primitives.js',
+        'tokens.json', 'icons/claude.svg']) {
+        const absent = new Set(entries);
+        absent.delete(required);
+        expectFailure(absent, `an absent ${required}`);
+    }
+    const catalogFixture = new Set(entries);
+    catalogFixture.add('catalog-state.js');
+    expectFailure(catalogFixture, 'a catalog fixture');
+    const stubFixture = new Set(entries);
+    stubFixture.add('stub-provider.js');
+    expectFailure(stubFixture, 'a packaged stub');
+    process.stdout.write('production package verifier: rejection fixtures passed\n');
+}
+
+function assertCaptures(captureDir, captures, label, compareCanonical) {
+    for (const filename of captures) {
         const bytes = readFileSync(path.join(captureDir, filename));
         const pngSignature = bytes.subarray(0, 8).toString('hex');
         if (pngSignature !== '89504e470d0a1a0a' || bytes.length < 256)
@@ -140,7 +177,7 @@ function assertCaptures(captureDir, compareCanonical) {
         }
     }
     const comparison = compareCanonical ? ' and pixel-identical' : '';
-    process.stdout.write(`catalog captures: ${expectedCaptures.length} verified` +
+    process.stdout.write(`${label} captures: ${captures.length} verified` +
         `${comparison}\n`);
 }
 
@@ -371,6 +408,7 @@ export async function run() {
 
 const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), 'claudex-usage-check-'));
 const packageDir = path.join(temporaryRoot, 'package');
+const productionPackageDir = path.join(temporaryRoot, 'production-package');
 const proofSourceDir = path.join(temporaryRoot, 'shared-proof');
 const proofPackageDir = path.join(temporaryRoot, 'shared-proof-package');
 const proofJourneyPath = path.join(temporaryRoot, 'shared-proof.journey.js');
@@ -378,6 +416,7 @@ const captureDir = updateCaptures
     ? path.join(root, 'design/captures')
     : path.join(temporaryRoot, 'captures');
 mkdirSync(packageDir, {recursive: true});
+mkdirSync(productionPackageDir, {recursive: true});
 mkdirSync(proofPackageDir, {recursive: true});
 mkdirSync(captureDir, {recursive: true});
 
@@ -385,7 +424,7 @@ try {
     run('node', ['scripts/doc-lint.mjs', 'docs/product', 'docs/engineering']);
     run('node', ['scripts/render-catalog-styles.mjs', '--check']);
     run('node', ['--test', 'tests/unit/catalog-state.test.js',
-        'tests/unit/design-tokens.test.js']);
+        'tests/unit/design-tokens.test.js', 'tests/unit/surface-controller.test.js']);
     run('gnome-extensions', [
         'pack',
         '--force',
@@ -407,6 +446,30 @@ try {
         'icons/codex-light.svg',
     ]);
     assertVerifierRejects(catalogEntries);
+    run('gnome-extensions', [
+        'pack',
+        '--force',
+        '--extra-source=surface-controller.js',
+        '--extra-source=shared',
+        '--extra-source=../design/system/tokens.json',
+        '--extra-source=../design/direction-lab/icons',
+        '--out-dir', productionPackageDir,
+        'extension',
+    ]);
+    const productionZipPath = path.join(productionPackageDir,
+        'claudex-usage@hugo.local.shell-extension.zip');
+    const productionEntries = assertPackage(productionZipPath, 'production', [
+        'surface-controller.js',
+        'icons/claude.svg',
+        'icons/claude-light.svg',
+        'icons/codex.svg',
+        'icons/codex-light.svg',
+    ]);
+    for (const forbidden of ['catalog-state.js', 'stub-provider.js']) {
+        if (productionEntries.has(forbidden))
+            throw new Error(`production package contains forbidden ${forbidden}`);
+    }
+    assertProductionVerifierRejects(productionEntries);
     writeSharedConsumer(proofSourceDir, proofJourneyPath);
     run('gnome-extensions', [
         'pack',
@@ -437,7 +500,18 @@ try {
     ], {
         env: {...process.env, CLAUDEX_CAPTURE_DIR: captureDir},
     });
-    assertCaptures(captureDir, !updateCaptures);
+    run('dbus-run-session', [
+        '--',
+        'gnome-shell-test-tool',
+        '--devkit',
+        '--disable-animations',
+        '--extension', productionZipPath,
+        'tests/journeys/J-002-usage-surface.journey.test.js',
+    ], {
+        env: {...process.env, CLAUDEX_CAPTURE_DIR: captureDir},
+    });
+    assertCaptures(captureDir, catalogCaptures, 'catalog', !updateCaptures);
+    assertCaptures(captureDir, surfaceCaptures, 'production surface', !updateCaptures);
     process.stdout.write('\nClaudex Usage check: passed\n');
 } finally {
     rmSync(temporaryRoot, {recursive: true, force: true});

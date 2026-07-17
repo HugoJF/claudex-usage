@@ -16,8 +16,8 @@ This file contains only Claudex Usage project facts.
 
 - Target desktop: GNOME Shell 50.1 on Linux.
 - Intended UI surface: a GNOME Shell extension written in GJS.
-- Current phase: approved visual system and developer-only primitive catalog; no
-  provider integration or production extension yet.
+- Current phase: approved visual system, developer-only primitive catalog, and
+  provider-free production surface shell; provider adapters remain unimplemented.
 
 ```bash
 npm test

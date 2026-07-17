@@ -12,7 +12,10 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tokenPath = path.join(root, 'design/system/tokens.json');
 const templatePath = path.join(root, 'extension/shared/stylesheet.template.css');
-const outputPath = path.join(root, 'design/direction-lab/stylesheet.css');
+const outputPaths = [
+    path.join(root, 'design/direction-lab/stylesheet.css'),
+    path.join(root, 'extension/stylesheet.css'),
+];
 
 export function renderStyles(template, tokens) {
     validateTokens(tokens);
@@ -37,15 +40,18 @@ async function main() {
     const rendered = renderStyles(template, JSON.parse(tokenSource));
 
     if (checkOnly) {
-        const current = await readFile(outputPath, 'utf8').catch(() => null);
-        if (current !== rendered)
-            throw new Error('Generated stylesheet is stale; run node scripts/render-catalog-styles.mjs');
-        process.stdout.write('catalog stylesheet: current\n');
+        for (const outputPath of outputPaths) {
+            const current = await readFile(outputPath, 'utf8').catch(() => null);
+            if (current !== rendered)
+                throw new Error('Generated stylesheet is stale; run node scripts/render-catalog-styles.mjs');
+        }
+        process.stdout.write('catalog and production stylesheets: current\n');
         return;
     }
 
-    await writeFile(outputPath, rendered);
-    process.stdout.write(`catalog stylesheet: wrote ${path.relative(root, outputPath)}\n`);
+    await Promise.all(outputPaths.map(outputPath => writeFile(outputPath, rendered)));
+    process.stdout.write('stylesheets: wrote ' + outputPaths
+        .map(outputPath => path.relative(root, outputPath)).join(', ') + '\n');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url))

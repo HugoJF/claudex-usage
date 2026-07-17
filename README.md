@@ -6,7 +6,7 @@
 
 ![GNOME Shell 50](https://img.shields.io/badge/GNOME%20Shell-50-4a86cf)
 ![GJS](https://img.shields.io/badge/built%20with-GJS-1a5fb4)
-![Status: design preview](https://img.shields.io/badge/status-design%20preview-e66100)
+![Status: surface shell](https://img.shields.io/badge/status-surface%20shell-4a86cf)
 
 <img src="design/captures/usage-dark-100.png" width="440" alt="Claudex Usage popover showing Claude and Codex usage windows, reset times, and usage history">
 
@@ -38,22 +38,22 @@ These constraints are product-level commitments, not implementation details
 
 ## Project status
 
-The project is in its design phase. The approved visual system ships today as an
-installable static primitive catalog; live provider integration is the next milestone.
+The approved visual system and provider-free production surface shell ship today.
+Live Claude Code and Codex adapters are the next milestone.
 
 | Capability | Status |
 | --- | --- |
 | Design system and primitive catalog | ✅ Done — Direction D, installable with a screenshot harness |
-| Unified usage surface | 🔜 Planned |
+| Unified usage surface | ✅ Done — production UUID `claudex-usage@hugo.local`, five-minute fail-closed polling while eligible providers exist |
 | Claude Code / Codex provider adapters | 🔜 Planned |
 
 The [feature horizon](docs/product/feature-horizon.md) tracks the full capability map.
 
 ## Gallery
 
-Every state is captured deterministically from an isolated GNOME Shell 50.1 session by
-the J-001 journey — light and dark Shell chrome, focus and hover states, and 200%
-panel scaling.
+Every state is captured deterministically from an isolated GNOME Shell 50.1 session.
+J-001 proves the static catalog; J-002 proves the production surface through
+harness-only provider registration, including unavailable and absent states.
 
 | Panel indicator (dark) | Panel indicator (light) |
 | --- | --- |
@@ -113,9 +113,9 @@ log out and back in. To remove the catalog:
 gnome-extensions uninstall claudex-usage-design@hugo.local
 ```
 
-This installs the static design catalog only. Its package contains the neutral
-`shared/` presentation source used by the SURF-001 reuse proof; the persistent
-production extension and provider integration have not been implemented yet.
+This installs the static design catalog only. The separately packaged production shell
+has UUID `claudex-usage@hugo.local`, starts invisible, and accepts in-process provider
+adapters through its documented contract; no adapter ships in it yet.
 
 ## Development
 
