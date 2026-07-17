@@ -95,7 +95,7 @@ its build slice.
 
 - API: [API contracts](../../engineering/api-contracts.md) — delta: add the
   provider-slot contract (identity, marks, eligibility signal, usage windows with
-  reset times, availability state), authored with `SURF-001`.
+  reset times, availability state), authored with `SURF-002`.
 - Data: [data model](../../engineering/data-model.md) — delta: persisted panel
   preferences (limit visibility, refresh cadence); nothing else durable.
 - Decisions: [decision log](../../engineering/decision-log.md) — cadence value set
@@ -125,10 +125,13 @@ its build slice.
 
 ## Build Slices
 
-- [ ] `SURF-001` — shared-module extraction, production extension shell, provider
-  contract with stub provider, glance behavior including unavailable and absent
-  states, J-002 journey test.
-- [ ] `SURF-002` — settings view with persisted visibility and cadence, J-003
+- [ ] `SURF-001` — shared-module extraction: pure token/geometry module and
+  data-driven primitives shared with the production package; catalog behavior
+  and the J-001 journey unchanged.
+- [ ] `SURF-002` — production extension shell, provider contract with stub
+  provider, glance behavior including unavailable and absent states, J-002
+  journey test and its capture evidence.
+- [ ] `SURF-003` — settings view with persisted visibility and cadence, J-003
   journey test, capture evidence for the new production states.
 
 ## Non-Scope
