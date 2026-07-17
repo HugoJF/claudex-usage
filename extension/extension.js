@@ -259,13 +259,12 @@ export default class ClaudexUsageExtension extends Extension {
     }
 
     _historySection() {
-        if (!this._preferences.localHistory || !this._history)
+        if (!this._preferences.localHistory || !this._history ||
+            !this._history.hasSamples())
             return null;
         const range = this._preferences.historyRange;
         const series = this._history.series(range.id).filter(item =>
             HISTORY_SERIES_META[`${item.providerId}:${item.windowId}`]);
-        if (series.length === 0)
-            return null;
         const key = item => `${item.providerId}:${item.windowId}`;
         const section = column('selected-history');
         const head = new St.BoxLayout({
@@ -284,6 +283,14 @@ export default class ClaudexUsageExtension extends Extension {
             onSelect: id => this._settings.set_enum('history-range', historyRangeIndex(id)),
         }));
         section.add_child(head);
+        if (series.length === 0) {
+            section.add_child(new St.Label({
+                name: 'history-empty',
+                text: `Not enough history for the ${range.label} range yet`,
+                style_class: 'claudex-provider-detail',
+            }));
+            return section;
+        }
         section.add_child(HistoryChart({
             id: 'history-chart',
             accessibleName: `Usage history for ${range.label}, ` +

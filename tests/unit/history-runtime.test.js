@@ -65,7 +65,9 @@ try {
         assert(short && short.values.length === 30, 'series length');
         assert(short.values[0] === 5 && short.values.at(-1) === 50, 'carry-forward');
 
+        assert(instance.hasSamples(), 'hasSamples true after recording');
         const reloaded = runtime('persist');
+        assert(reloaded.hasSamples(), 'hasSamples true after reload');
         equal(ids(reloaded.series('1h')), ids(series), 'reloaded ids');
         equal(reloaded.series('1h'), series, 'reloaded series');
 
@@ -81,6 +83,7 @@ try {
         instance.record([{providerId: 'claude', windowId: 'short', percent: NaN},
             {providerId: '', windowId: 'short', percent: 5}, 42, null]);
         equal(instance.series('1h'), [], 'nothing recorded');
+        assert(!instance.hasSamples(), 'hasSamples false when nothing recorded');
         assert(!Gio.File.new_for_path(GLib.build_filenamev([root, 'malformed', 'history.json']))
             .query_exists(null), 'no file written for empty batches');
     });

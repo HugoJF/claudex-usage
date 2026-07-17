@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     deserializeStore,
     emptyStore,
+    hasSamples,
     HISTORY_RANGES,
     recordSample,
     RETENTION_MS,
@@ -94,6 +95,13 @@ test('seriesForRange omits windows without coverage at the range start', () => {
     const series = seriesForRange(covered, '6h', now);
     assert.equal(series.length, 1);
     assert.deepEqual([series[0].providerId, series[0].windowId], ['codex', 'weekly']);
+});
+
+test('hasSamples reports whether any window holds a sample', () => {
+    assert.equal(hasSamples(emptyStore()), false);
+    assert.equal(hasSamples(null), false);
+    assert.equal(hasSamples({windows: {'claude:short': []}}), false);
+    assert.equal(hasSamples(build([sample()])), true);
 });
 
 test('seriesForRange fails closed for unknown ranges, bad now, and empty stores', () => {

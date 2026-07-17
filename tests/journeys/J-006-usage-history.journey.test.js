@@ -106,6 +106,19 @@ export async function run() {
         assert(findActor(indicator.menu.actor, 'history-chart'),
             'the chart stays after switching range');
 
+        // A range with no coverage keeps the selector and shows an empty state
+        // rather than vanishing, so the user can switch back.
+        findActor(indicator.menu.actor, 'range-30d').emit('clicked', 1);
+        await waitFor(() => findActor(indicator.menu.actor, 'history-empty'),
+            'an uncovered range shows the empty state');
+        assert(!findActor(indicator.menu.actor, 'history-chart'),
+            'no chart is drawn for an uncovered range');
+        assert(findActor(indicator.menu.actor, 'range-6h'),
+            'the range selector stays so the user is not trapped');
+        findActor(indicator.menu.actor, 'range-6h').emit('clicked', 1);
+        await waitFor(() => findActor(indicator.menu.actor, 'history-chart'),
+            'switching back to a covered range restores the chart');
+
         findActor(indicator.menu.actor, 'settings-button').emit('clicked', 1);
         await waitFor(() => findActor(indicator.menu.actor, 'toggle-showUsageHistory'),
             'settings view exposes the local-history toggle');

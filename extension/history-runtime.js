@@ -4,6 +4,7 @@ import GLib from 'gi://GLib';
 import {
     deserializeStore,
     emptyStore,
+    hasSamples,
     recordSample,
     seriesForRange,
     serializeStore,
@@ -71,6 +72,10 @@ export class HistoryRuntime {
 
     series(rangeId) {
         return seriesForRange(this._store, rangeId, this._now());
+    }
+
+    hasSamples() {
+        return hasSamples(this._store);
     }
 
     _load() {

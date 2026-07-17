@@ -47,6 +47,8 @@ Acceptance:
 - Settings — the local-history toggle and range choice persist across sessions.
 - Absent-history state — with local history off or no samples yet, the popup shows
   current values with no chart.
+- Uncovered range — a selected range with no coverage keeps the range selector and shows
+  an empty state instead of hiding, so the range is never a dead end.
 
 ## Cross-Journey Acceptance
 

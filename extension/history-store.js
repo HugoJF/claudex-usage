@@ -22,6 +22,14 @@ export function emptyStore() {
     return frozenStore({});
 }
 
+export function hasSamples(store) {
+    for (const samples of Object.values(windowsOf(store))) {
+        if (Array.isArray(samples) && samples.length > 0)
+            return true;
+    }
+    return false;
+}
+
 function windowsOf(store) {
     return isRecord(store) && isRecord(store.windows) ? store.windows : {};
 }
