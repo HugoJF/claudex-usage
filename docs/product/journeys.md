@@ -11,6 +11,7 @@ each Spec declares which journeys it creates, extends, or joins.
 | J-002 | Glance at live usage | SPEC-USAGE-SURFACE | `tests/journeys/J-002-usage-surface.journey.test.js` |
 | J-003 | Persist panel preferences | SPEC-USAGE-SURFACE | `tests/journeys/J-003-panel-preferences.journey.test.js` |
 | J-004 | See Codex usage | SPEC-CODEX-ADAPTER | `tests/journeys/J-004-codex-usage.journey.test.js` |
+| J-005 | See Claude usage | SPEC-CLAUDE-ADAPTER | `tests/journeys/J-005-claude-usage.journey.test.js` |
 
 ## J-001 — Review usage interface primitives
 
@@ -66,3 +67,16 @@ Owning Spec: [SPEC-CODEX-ADAPTER](specs/2026-07-17-codex-adapter.md)
    extension starting or retaining a Codex process.
 4. The credential or usage service returns unusable data; Codex shows the unavailable state
    without stale metrics or exposed response details.
+
+## J-005 — See Claude usage
+
+Owning Spec: [SPEC-CLAUDE-ADAPTER](specs/2026-07-17-claude-adapter.md)
+
+1. The user starts or already has a local Claude Code session; the GNOME panel adds the
+   Claude mark and its current short and weekly usage using the existing OAuth login.
+2. The user opens the unified popup and reviews Claude's short and weekly percentages and
+   reset times alongside any other eligible provider.
+3. The last local Claude Code session closes; Claude disappears from the surface without
+   the extension starting or retaining a Claude Code process.
+4. The credential or usage service returns unusable data; Claude shows the unavailable
+   state without stale metrics or exposed response details.

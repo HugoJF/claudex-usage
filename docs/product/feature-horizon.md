@@ -11,8 +11,8 @@ Status values: `idea`, `brief`, `spec`, and `done`.
   installable static catalog with its screenshot harness.
 - Usage surface shell — `done`; persisted panel preferences, unified panel item,
   popup, and fail-closed provider slot ([SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)).
-- Claude adapter — `brief`; live Claude Code windows from the existing OAuth
-  credential ([BRIEF-LIVE-USAGE](briefs/2026-07-16-live-usage.md)).
+- Claude adapter — `spec`; live Claude Code short and weekly windows from the existing
+  OAuth credential ([SPEC-CLAUDE-ADAPTER](specs/2026-07-17-claude-adapter.md)).
 - Codex adapter — `done`; live weekly usage through the existing CLI credential while
   a local session is present ([SPEC-CODEX-ADAPTER](specs/2026-07-17-codex-adapter.md)).
 

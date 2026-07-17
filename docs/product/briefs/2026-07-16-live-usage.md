@@ -12,6 +12,7 @@ parent_ids: [PITCH-CLAUDEX-USAGE]
 child_docs:
   - docs/product/specs/2026-07-16-usage-surface.md
   - docs/product/specs/2026-07-17-codex-adapter.md
+  - docs/product/specs/2026-07-17-claude-adapter.md
 tags: [gnome, claude, codex, usage]
 supersedes: []
 ---
@@ -92,7 +93,7 @@ capability:
 | Unified item vs per-provider items (pitch open question) | Resolved — single unified item; owner decision 2026-07-16, recorded in Constraints. |
 | Approved popup design renders a history chart while local history is parked | Resolved — chart deferred from this chapter; the parked horizon decision stays untouched. |
 | The surface shell alone shows a user nothing | Resolved — the Codex adapter now supplies the first live provider value. |
-| Concrete app IDs, window classes, and process-vs-window detection are unknown | Partly resolved — Codex uses an exact current-user `codex` process; Claude detection remains deferred. |
+| Concrete app IDs, window classes, and process-vs-window detection are unknown | Resolved — both providers gate on an exact current-user process (`codex`, `claude`); CLAUDE-001 freezes the Claude credential and response boundary before integration. |
 | The working Codex usage endpoint is internal and may change | Resolved — accepted as the bundle's sole internal-endpoint exception; CODEX-001 freezes a fail-closed fixture contract before CODEX-002 integrates it. |
 | Refresh cadence balancing usefulness and provider load | Resolved — a user-facing cadence choice ships in the surface settings (owner decision 2026-07-16); the value set and default stay decision-log territory. |
 
@@ -103,5 +104,7 @@ were confirmed at the promotion gate.
 
 ## Next Step
 
-Promote and specify the Claude adapter against the shipped provider slot while
-preserving the Codex adapter's fail-closed and no-launch constraints.
+Plan CLAUDE-001 before implementing the Claude adapter: it evidences the existing
+OAuth credential, usage endpoint, short and weekly response mapping, and the presence
+signal the provider must use, preserving the Codex adapter's fail-closed and no-launch
+constraints.
