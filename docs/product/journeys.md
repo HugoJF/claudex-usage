@@ -12,6 +12,7 @@ each Spec declares which journeys it creates, extends, or joins.
 | J-003 | Persist panel preferences | SPEC-USAGE-SURFACE | `tests/journeys/J-003-panel-preferences.journey.test.js` |
 | J-004 | See Codex usage | SPEC-CODEX-ADAPTER | `tests/journeys/J-004-codex-usage.journey.test.js` |
 | J-005 | See Claude usage | SPEC-CLAUDE-ADAPTER | `tests/journeys/J-005-claude-usage.journey.test.js` |
+| J-006 | See usage history | SPEC-LOCAL-HISTORY | `tests/journeys/J-006-usage-history.journey.test.js` |
 
 ## J-001 — Review usage interface primitives
 
@@ -80,3 +81,16 @@ Owning Spec: [SPEC-CLAUDE-ADAPTER](specs/2026-07-17-claude-adapter.md)
    the extension starting or retaining a Claude Code process.
 4. The credential or usage service returns unusable data; Claude shows the unavailable
    state without stale metrics or exposed response details.
+
+## J-006 — See usage history
+
+Owning Spec: [SPEC-LOCAL-HISTORY](specs/2026-07-17-local-history.md)
+
+1. While using an agent with local history on, each refresh records a durable sample and
+   the popup shows the merged multi-provider trajectory for the selected range.
+2. The user changes the range; the chart re-renders over the new window from recorded
+   samples without a network request.
+3. After a GNOME Shell restart, the popup honors the persisted history and range choice;
+   no sample was recorded while no provider was eligible.
+4. The user turns local history off; recording stops and the chart disappears while the
+   current-value panel and cards stay live, and nothing recorded leaves the machine.

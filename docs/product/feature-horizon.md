@@ -18,8 +18,8 @@ Status values: `idea`, `brief`, `spec`, and `done`.
 
 ## Later / Parking Lot
 
-- Local usage history — `brief`; record usage samples during the opportunistic refresh
+- Local usage history — `spec`; record usage samples during the opportunistic refresh
   and show the deferred trajectory chart, local-only
-  ([BRIEF-LOCAL-HISTORY](briefs/2026-07-17-local-history.md)).
+  ([SPEC-LOCAL-HISTORY](specs/2026-07-17-local-history.md)).
 - Usage-threshold notifications — `idea`; consider only after live values are
   trustworthy.
