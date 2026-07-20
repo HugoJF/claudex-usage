@@ -69,10 +69,13 @@ fresh Shell sessions through a disposable keyfile backend.
 loads and persists its serialized form as a durable JSON file under the user data
 directory. When local history is enabled, each completed refresh records one bounded
 sample per available provider window, and the popup derives the merged trajectory for the
-selected range from the store — reusing the shipped `HistoryChart`, `RangeSelector`, and
-`Legend`. Recording rides the existing refresh, so nothing samples or writes while no
+selected range from the store — reusing the shipped `HistoryChart`, `CompactSelect`, and
+`Legend`. The select keeps its list inside the Shell popup, persists the existing enum,
+restores trigger focus after selection rerenders, and resets when the popup unmaps.
+Recording rides the existing refresh, so nothing samples or writes while no
 provider is present, and nothing recorded leaves the machine. Distinct refreshes that
 complete in the same clock millisecond receive adjacent safe millisecond timestamps so
 their ordering survives the store's strict monotonic boundary. J-006 seeds a store,
-proves the chart, ordered live samples, the range switch, and the disable path, and
-reuses the J-005 Claude endpoint and process-root inputs.
+proves the chart, ordered live samples, keyboard range selection, native Shell Escape,
+theme and scale states, request/store invariance, and the disable path, and reuses the
+J-005 Claude endpoint and process-root inputs.

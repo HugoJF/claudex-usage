@@ -31,6 +31,12 @@ function requirePercent(value, context) {
     return value;
 }
 
+function requirePositiveInteger(value, context) {
+    if (!Number.isInteger(value) || value <= 0)
+        throw new Error(`${context} must be a positive integer`);
+    return value;
+}
+
 function requireUniqueIds(items, context) {
     const ids = new Set();
     for (const item of items) {
@@ -379,6 +385,177 @@ export function RangeSelector({choices, selected, onSelect}) {
         rangeButton.accessible_role = Atk.Role.RADIO_BUTTON;
         actor.add_child(rangeButton);
     }
+    return actor;
+}
+
+export function CompactSelect({id, choices, selected, accessibleName, onSelect,
+    tokens}) {
+    requireId(id, 'Compact select');
+    requireText(accessibleName, 'Compact select accessible name');
+    requireCallback(onSelect, 'Compact select selection');
+    const iconSize = requirePositiveInteger(tokens?.size?.settingsIcon,
+        'Compact select icon size');
+    if (!Array.isArray(choices) || choices.length === 0)
+        throw new Error('Compact select choices must be nonempty');
+    const models = choices.map(choice => Object.freeze({
+        id: requireId(choice?.id, 'Compact select choice'),
+        label: requireText(choice?.label, 'Compact select choice label'),
+        accessibleName: requireText(choice?.accessibleName,
+            'Compact select choice accessible name'),
+    }));
+    requireUniqueIds(models, 'Compact select choice');
+    const selectedIndex = models.findIndex(choice => choice.id === selected);
+    if (selectedIndex < 0)
+        throw new Error('Compact select selection must name an available choice');
+
+    const actor = column('claudex-compact-select', {
+        name: `compact-select-${id}`,
+        x_align: Clutter.ActorAlign.END,
+    });
+    const triggerRow = box('selected-choice-row',
+        Clutter.Orientation.HORIZONTAL);
+    triggerRow.add_child(label(models[selectedIndex].label,
+        'selected-choice-value'));
+    triggerRow.add_child(new St.Icon({
+        icon_name: 'pan-down-symbolic',
+        icon_size: Math.max(1, Math.floor(iconSize / 2)),
+    }));
+    const trigger = new St.Button({
+        name: `select-${id}`,
+        style_class: 'selected-choice-button claudex-select-trigger',
+        can_focus: true,
+        reactive: true,
+        track_hover: true,
+        child: triggerRow,
+        accessible_role: Atk.Role.COMBO_BOX,
+    });
+    trigger.set_accessible_name(accessibleName);
+    trigger.add_accessible_state(Atk.StateType.EXPANDABLE);
+    actor.add_child(trigger);
+
+    const optionList = column('claudex-select-options', {
+        name: `select-${id}-options`,
+        x_align: Clutter.ActorAlign.END,
+        accessible_role: Atk.Role.LIST_BOX,
+    });
+    optionList.set_accessible_name(`${accessibleName} options`);
+    const optionActors = models.map((choice, index) => {
+        const active = index === selectedIndex;
+        const row = box('selected-choice-row', Clutter.Orientation.HORIZONTAL, {
+            x_expand: true,
+        });
+        row.add_child(label(choice.label, 'selected-choice-value', {
+            x_expand: true,
+        }));
+        if (active) {
+            row.add_child(new St.Icon({
+                icon_name: 'object-select-symbolic',
+                icon_size: Math.max(1, Math.floor(iconSize / 2)),
+            }));
+        }
+        const option = new St.Button({
+            name: `select-${id}-option-${choice.id}`,
+            style_class: `claudex-select-option${active ? ' active' : ''}`,
+            can_focus: false,
+            reactive: true,
+            track_hover: true,
+            toggle_mode: true,
+            checked: active,
+            child: row,
+            accessible_role: Atk.Role.RADIO_BUTTON,
+        });
+        option.set_accessible_name(choice.accessibleName);
+        optionList.add_child(option);
+        return option;
+    });
+    actor.add_child(optionList);
+    optionList.hide();
+
+    trigger.get_accessible().add_relationship(
+        Atk.RelationType.CONTROLLER_FOR, optionList.get_accessible());
+    optionList.get_accessible().add_relationship(
+        Atk.RelationType.CONTROLLED_BY, trigger.get_accessible());
+
+    let open = false;
+    const focusOption = index => optionActors[index].grab_key_focus();
+    const closeOptions = (focusTrigger = true) => {
+        if (!open)
+            return;
+        open = false;
+        optionList.hide();
+        for (const option of optionActors)
+            option.can_focus = false;
+        trigger.remove_accessible_state(Atk.StateType.EXPANDED);
+        if (focusTrigger)
+            trigger.grab_key_focus();
+    };
+    const openOptions = (focusIndex = selectedIndex) => {
+        if (!open) {
+            open = true;
+            for (const option of optionActors)
+                option.can_focus = true;
+            optionList.show();
+            trigger.add_accessible_state(Atk.StateType.EXPANDED);
+        }
+        focusOption(focusIndex);
+    };
+    const choose = index => {
+        closeOptions(true);
+        onSelect(models[index].id);
+    };
+
+    trigger.connect('clicked', () => {
+        if (open)
+            closeOptions(true);
+        else
+            openOptions();
+    });
+    trigger.connect('key-press-event', (_actor, event) => {
+        switch (event.get_key_symbol()) {
+        case Clutter.KEY_Down:
+        case Clutter.KEY_Up:
+            openOptions();
+            return Clutter.EVENT_STOP;
+        case Clutter.KEY_Escape:
+            if (!open)
+                return Clutter.EVENT_PROPAGATE;
+            closeOptions(true);
+            return Clutter.EVENT_STOP;
+        default:
+            return Clutter.EVENT_PROPAGATE;
+        }
+    });
+    optionActors.forEach((option, index) => {
+        option.connect('clicked', () => choose(index));
+        option.connect('key-press-event', (_actor, event) => {
+            switch (event.get_key_symbol()) {
+            case Clutter.KEY_Down:
+                focusOption((index + 1) % optionActors.length);
+                return Clutter.EVENT_STOP;
+            case Clutter.KEY_Up:
+                focusOption((index - 1 + optionActors.length) %
+                    optionActors.length);
+                return Clutter.EVENT_STOP;
+            case Clutter.KEY_Home:
+                focusOption(0);
+                return Clutter.EVENT_STOP;
+            case Clutter.KEY_End:
+                focusOption(optionActors.length - 1);
+                return Clutter.EVENT_STOP;
+            case Clutter.KEY_Escape:
+                closeOptions(true);
+                return Clutter.EVENT_STOP;
+            default:
+                return Clutter.EVENT_PROPAGATE;
+            }
+        });
+    });
+
+    actor.connect('notify::mapped', () => {
+        if (!actor.mapped)
+            closeOptions(false);
+    });
+    actor.focusTrigger = () => trigger.grab_key_focus();
     return actor;
 }
 

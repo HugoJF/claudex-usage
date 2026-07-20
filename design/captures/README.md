@@ -17,9 +17,17 @@ visibility-switch focus/hover, cadence-choice focus/hover, and light settings. I
 also proves the selected values in a separate fresh Shell session using a disposable
 GSettings keyfile.
 
-J-006 adds the production Left popup: current values and bars are complemented from
-canonical used percentages, and asymmetric seeded history proves the chart trajectory
-is complemented without rewriting the local sample store.
+J-006 adds the production Left popup and the compact history-range select. Current
+values and bars are complemented from canonical used percentages, and asymmetric
+seeded history proves the chart trajectory is complemented without rewriting the
+local sample store. Open-select evidence covers dark and light Shell states plus an
+isolated 200% selector state; the journey also drives its keyboard map, focus
+restoration, native Shell Escape, persisted enum, uncovered-range escape, and
+request/store invariance.
+
+J-002's default, pending-refresh, and unavailable popup captures retain the compact
+select in its closed empty-history state, so those production baselines cover the
+control alongside provider success, refresh, and partial-failure presentation.
 
 Regenerate the evidence from an isolated GNOME Shell 50.1 session:
 

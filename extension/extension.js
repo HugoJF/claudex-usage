@@ -9,6 +9,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {
+    CompactSelect,
     FooterStatus,
     HistoryChart,
     IconButton,
@@ -17,7 +18,6 @@ import {
     PopoverScaffold,
     ProviderCard,
     ProviderGroup,
-    RangeSelector,
     ChoiceRow,
     SettingsRow,
 } from './shared/primitives.js';
@@ -77,6 +77,8 @@ export default class ClaudexUsageExtension extends Extension {
         this._preferences = readPanelPreferences(this._settings);
         this._view = 'usage';
         this._wasRefreshing = false;
+        this._focusHistoryRangeAfterRender = false;
+        this._historyRangeSelect = null;
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (!isPreferenceKey(key))
                 return;
@@ -167,6 +169,8 @@ export default class ClaudexUsageExtension extends Extension {
         this._settings = null;
         this._preferences = null;
         this._view = null;
+        this._focusHistoryRangeAfterRender = false;
+        this._historyRangeSelect = null;
     }
 
     _recordHistory(snapshot) {
@@ -220,6 +224,7 @@ export default class ClaudexUsageExtension extends Extension {
             groups,
             tokens: this._tokens,
         }));
+        this._historyRangeSelect = null;
         const children = this._view === 'settings'
             ? this._settingsPopover()
             : this._usagePopover(snapshot);
@@ -228,6 +233,10 @@ export default class ClaudexUsageExtension extends Extension {
             view: this._view,
             children,
         }));
+        if (this._focusHistoryRangeAfterRender && this._historyRangeSelect) {
+            this._focusHistoryRangeAfterRender = false;
+            this._historyRangeSelect.focusTrigger();
+        }
     }
 
     _usagePopover(snapshot) {
@@ -280,22 +289,32 @@ export default class ClaudexUsageExtension extends Extension {
             values: item.values.map(value => this._displayPercent(value)),
         }));
         const key = item => `${item.providerId}:${item.windowId}`;
-        const section = column('selected-history');
+        const section = column('selected-history', 'history-section');
         const head = new St.BoxLayout({
             style_class: 'selected-history-header',
             orientation: Clutter.Orientation.HORIZONTAL,
             x_expand: true,
         });
         head.add_child(label('Usage history', 'selected-section-title', {x_expand: true}));
-        head.add_child(RangeSelector({
+        const select = CompactSelect({
+            id: 'history-range',
             choices: HISTORY_RANGES.map(choice => ({
                 id: choice.id,
                 label: choice.label,
                 accessibleName: `${choice.label} history range`,
             })),
             selected: range.id,
-            onSelect: id => this._settings.set_enum('history-range', historyRangeIndex(id)),
-        }));
+            accessibleName: `Usage history range, ${range.label}`,
+            onSelect: id => {
+                if (id === range.id)
+                    return;
+                this._focusHistoryRangeAfterRender = true;
+                this._settings.set_enum('history-range', historyRangeIndex(id));
+            },
+            tokens: this._tokens,
+        });
+        this._historyRangeSelect = select;
+        head.add_child(select);
         section.add_child(head);
         if (series.length === 0) {
             section.add_child(new St.Label({

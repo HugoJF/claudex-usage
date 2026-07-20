@@ -81,6 +81,7 @@
 .selected-settings-button:focus,
 .selected-back-button:focus,
 .claudex-range-button:focus,
+.claudex-select-option:focus,
 .claudex-text-button:focus,
 .selected-setting-button:focus,
 .selected-choice-button:focus {
@@ -206,6 +207,38 @@
 .claudex-range-button.active {
   color: {{color.surfaceRoot}};
   background-color: {{color.focus}};
+}
+
+.claudex-compact-select {
+  spacing: {{space.micro}}px;
+}
+
+.claudex-select-options {
+  min-width: 68px;
+  padding: {{space.micro}}px;
+  spacing: {{space.micro}}px;
+  border-radius: {{radius.control}}px;
+  color: {{color.foregroundSecondary}};
+  background-color: {{color.surfaceRaised}};
+  border: 1px solid {{color.borderSubtle}};
+}
+
+.claudex-select-option {
+  padding: {{space.micro}}px {{space.compact}}px;
+  border-radius: {{radius.control}}px;
+  color: {{color.foregroundSecondary}};
+  background-color: transparent;
+}
+
+.claudex-select-option:hover,
+.claudex-select-option:focus {
+  color: {{color.foregroundPrimary}};
+  background-color: {{color.surfaceHover}};
+}
+
+.claudex-select-option.active {
+  color: {{color.foregroundPrimary}};
+  background-color: {{color.surfaceControl}};
 }
 
 .claudex-legend {

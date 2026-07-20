@@ -59,6 +59,7 @@ status, or decorative surfaces.
 | `HistoryChart` | safe ID, accessible name, axis labels, equal-length 0–100 series with semantic data roles and explicit stroke widths |
 | `Legend` | safe, unique entry IDs, full labels, semantic data roles |
 | `RangeSelector` | nonempty unique choices, valid selected ID, accessible names, selection callback receiving the stable ID |
+| `CompactSelect` | safe ID, nonempty unique choices, valid selected ID, top-level and option accessible names, stable-ID callback, validated icon geometry |
 | `IconButton` | safe ID, symbolic icon, accessible name, activation callback; transparent / hover / focus states |
 | `SettingsRow` | safe ID, title, description, accessible name, boolean state, callback receiving the stable ID |
 | `Switch` | on / off; fixed 32 × 18 track and 14 px thumb |
@@ -98,6 +99,11 @@ screen must list composed primitives and explicitly justify additions.
   popup. Production persistence is outside the primitive contract.
 - Range selection replaces the active state in place; chart transitions default to
   no animation until motion has a demonstrated comprehension benefit.
+- `CompactSelect` keeps its option list inside the containing Shell popup. Opening
+  focuses the selected option; Up/Down wrap, Home/End jump, and Enter/Space select.
+  Selection rerenders in place and restores focus to the new trigger. Shell owns
+  Escape, which closes the popup; unmapping removes the inline list from the visible
+  and keyboard-focus trees.
 - Provider unavailability, staleness, and lifecycle visibility require feature-spec
   behavior before they may appear in production UI.
 

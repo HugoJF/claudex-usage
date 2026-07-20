@@ -1,10 +1,10 @@
 ---
 id: SPEC-LOCAL-HISTORY
 type: spec
-status: draft
+status: done
 owner: hugo
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-19
 source_docs:
   - docs/product/briefs/2026-07-17-local-history.md
   - docs/product/pitch.md
@@ -63,9 +63,11 @@ Acceptance:
 
 Canonical reference: [Usage refinement, variant A — Quiet Utility](../../../design/direction-lab/USAGE-REFINEMENT-EXPLORATION.md#variant-a--quiet-utility),
 within [Direction D — Selected Blend](../../../design/direction-lab/DIRECTION-BRIEF.md#d--selected-blend).
-The popup composes `HistoryChart`, `Legend`, and a proposed compact select-menu
+The popup composes `HistoryChart`, `Legend`, and the shipped `CompactSelect`
 primitive. Claude 5-hour keeps its 1 px line and both weekly series their 2.5 px
-lines. The persisted range and chart geometry stay unchanged.
+lines. The persisted range and chart geometry stay unchanged. Arrow keys, Home,
+End, Enter, and Space operate the select; Escape follows the native Shell contract
+and closes the containing popup, with the inline option list reset on unmap.
 
 ## Contracts
 
@@ -105,18 +107,19 @@ read boundary; the surface continues to own polling, rendering, and provider lif
   and range settings into the production popup behind the store, and prove J-006 through
   the production surface. Medium: one recording-to-presentation invariant, at most 15
   files and 800 handwritten lines.
-- [ ] `HIST-003` — replace the five always-visible range buttons with one compact,
+- [x] `HIST-003` — replace the five always-visible range buttons with one compact,
   keyboard-accessible select menu while preserving the range enum, empty-range escape,
   and no-request rerender behavior. Medium: one range-selection invariant, at most 12
-  edited files and 550 handwritten lines.
+  hand-edited files and 700 handwritten lines, plus generated styles, captures, and
+  conformance metadata.
 
 ## Non-Scope
 
 - Sending, syncing, or backing up history off the machine, or retroactive backfill from
   provider APIs or logs.
 - Threshold notifications or any alerting on the trend.
-- New chart, axis, or range primitives, or provider generalization beyond Claude and
-  Codex.
+- New chart or axis primitives, additional range choices, or provider generalization
+  beyond Claude and Codex.
 
 ## Open Questions
 

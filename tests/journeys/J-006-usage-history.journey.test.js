@@ -1,3 +1,5 @@
+import Atk from 'gi://Atk';
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
@@ -7,6 +9,11 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Scripting from 'resource:///org/gnome/shell/ui/scripting.js';
 const UUID = 'claudex-usage@hugo.local', PORT = 19876;
 const LEFT_CAPTURE = 'surface-left-popup-dark-100.png';
+const RANGE_CAPTURES = {
+    dark: 'surface-history-range-open-dark-100.png',
+    light: 'surface-history-range-open-light-100.png',
+    scaled: 'surface-history-range-open-dark-200.png',
+};
 Gio._promisify(Shell.Screenshot.prototype, 'screenshot_area',
     'screenshot_area_finish');
 export const METRICS = {};
@@ -31,6 +38,29 @@ function labels(root, values = []) {
         labels(child, values);
     return values;
 }
+function hasState(actor, state) {
+    return actor.get_accessible().ref_state_set().contains_state(state);
+}
+function hasRelation(source, type, target) {
+    const relation = source.get_accessible().ref_relation_set()
+        .get_relation_by_type(type);
+    return relation?.get_target().includes(target.get_accessible()) ?? false;
+}
+function setShellColorScheme(scheme) {
+    Main.sessionMode.colorScheme = scheme;
+    St.Settings.get().notify('color-scheme');
+}
+function virtualKeyboard() {
+    return Clutter.get_default_backend().get_default_seat().create_virtual_device(
+        Clutter.InputDeviceType.KEYBOARD_DEVICE);
+}
+async function pressKey(keyboard, keyval) {
+    const time = Clutter.get_current_event_time();
+    keyboard.notify_keyval(time, keyval, Clutter.KeyState.PRESSED);
+    await Scripting.sleep(20);
+    keyboard.notify_keyval(time, keyval, Clutter.KeyState.RELEASED);
+    await Scripting.sleep(100);
+}
 function captureDirectory() {
     const override = GLib.getenv('CLAUDEX_CAPTURE_DIR');
     if (override)
@@ -42,13 +72,13 @@ async function captureActor(target, filename, padding = 8) {
     let actor = null;
     let width = 0;
     let height = 0;
-    for (let attempt = 0; attempt < 40; attempt++) {
+    for (let attempt = 0; attempt < 60; attempt++) {
         actor = typeof target === 'function' ? target() : target;
         if (actor?.is_mapped())
             [width, height] = actor.get_transformed_size();
         if (width > 0 && height > 0)
             break;
-        await Scripting.sleep(50);
+        await Scripting.sleep(80);
     }
     assert(actor?.is_mapped(), `${filename} actor is not mapped`);
     assert(width > 0 && height > 0, `${filename} actor has no allocated geometry`);
@@ -215,8 +245,24 @@ export async function run() {
         const legend = labels(indicator.menu.actor, []);
         assert(legend.includes('Claude 5-hour') && legend.includes('Claude weekly'),
             'chart legend names both Claude series');
-        assert(findActor(indicator.menu.actor, 'range-6h').has_style_class_name('active'),
-            'the default range is selected');
+        let rangeTrigger = findActor(indicator.menu.actor, 'select-history-range');
+        let rangeOptions = findActor(indicator.menu.actor,
+            'select-history-range-options');
+        const sixHourOption = findActor(indicator.menu.actor,
+            'select-history-range-option-6h');
+        assert(rangeTrigger.accessible_role === Atk.Role.COMBO_BOX &&
+            hasState(rangeTrigger, Atk.StateType.EXPANDABLE) &&
+            rangeTrigger.get_accessible_name() === 'Usage history range, 6h',
+        'the default range uses an accessible compact select');
+        assert(rangeOptions.accessible_role === Atk.Role.LIST_BOX &&
+            hasRelation(rangeTrigger, Atk.RelationType.CONTROLLER_FOR,
+                rangeOptions) &&
+            hasRelation(rangeOptions, Atk.RelationType.CONTROLLED_BY,
+                rangeTrigger),
+        'the range trigger controls its accessible option list');
+        assert(!rangeOptions.visible && !rangeOptions.is_mapped() &&
+            !sixHourOption.can_focus && sixHourOption.checked,
+        'closed range options leave the visible and focus trees');
 
         const historyBeforeDisplayChange = historyText();
         const requestsBeforeDisplayChange = state.requests;
@@ -257,24 +303,164 @@ export async function run() {
             'changing display basis leaves durable canonical history byte-identical');
         await captureActor(() => indicator.menu.actor, LEFT_CAPTURE);
 
-        findActor(indicator.menu.actor, 'range-1h').emit('clicked', 1);
-        await waitFor(() => findActor(indicator.menu.actor, 'range-1h')
-            ?.has_style_class_name('active'), 'range switch re-renders the chart');
-        assert(findActor(indicator.menu.actor, 'history-chart'),
-            'the chart stays after switching range');
+        const keyboard = virtualKeyboard();
+        const historyBeforeRangeInteraction = historyText();
+        const requestsBeforeRangeInteraction = state.requests;
+        const rangeSettings = extension.getSettings();
+        let rangeChanges = 0;
+        const rangeChangedId = rangeSettings.connect(
+            'changed::history-range', () => rangeChanges++);
+        const reopenUsagePopup = async () => {
+            indicator.menu.open();
+            await waitFor(() => indicator.menu.isOpen &&
+                findActor(indicator.menu.actor, 'select-history-range')?.is_mapped(),
+            'usage popup reopens with its mapped range selector');
+            rangeTrigger = findActor(indicator.menu.actor, 'select-history-range');
+            rangeOptions = findActor(indicator.menu.actor,
+                'select-history-range-options');
+        };
 
-        // A range with no coverage keeps the selector and shows an empty state
-        // rather than vanishing, so the user can switch back.
-        findActor(indicator.menu.actor, 'range-30d').emit('clicked', 1);
+        rangeTrigger = findActor(indicator.menu.actor, 'select-history-range');
+        rangeTrigger.grab_key_focus();
+        await pressKey(keyboard, Clutter.KEY_space);
+        rangeOptions = findActor(indicator.menu.actor,
+            'select-history-range-options');
+        assert(rangeOptions.visible && rangeOptions.is_mapped() &&
+            hasState(rangeTrigger, Atk.StateType.EXPANDED) &&
+            [...rangeOptions.get_children()].every(option => option.can_focus) &&
+            global.stage.get_key_focus()?.get_name() ===
+                'select-history-range-option-6h',
+        'Space opens the list and focuses its selected option');
+        await captureActor(() => indicator.menu.actor, RANGE_CAPTURES.dark);
+
+        rangeTrigger.grab_key_focus();
+        await pressKey(keyboard, Clutter.KEY_Escape);
+        await waitFor(() => !indicator.menu.isOpen && !rangeOptions.visible,
+            'Shell Escape closes the popup and resets the inline option list');
+
+        const originalScheme = Main.sessionMode.colorScheme;
+        setShellColorScheme('prefer-light');
+        await Scripting.sleep(150);
+        await reopenUsagePopup();
+        rangeTrigger.grab_key_focus();
+        await pressKey(keyboard, Clutter.KEY_space);
+        rangeOptions = findActor(indicator.menu.actor,
+            'select-history-range-options');
+        await captureActor(() => indicator.menu.actor, RANGE_CAPTURES.light);
+        await pressKey(keyboard, Clutter.KEY_Escape);
+        await waitFor(() => !indicator.menu.isOpen && !rangeOptions.visible,
+            'option Escape follows the native Shell popup-close behavior');
+
+        setShellColorScheme(originalScheme);
+        await Scripting.sleep(150);
+        await reopenUsagePopup();
+        rangeTrigger.grab_key_focus();
+        await pressKey(keyboard, Clutter.KEY_space);
+        const historySection = findActor(indicator.menu.actor, 'history-section');
+        const isolatedForScale = [
+            findActor(indicator.menu.actor, 'provider-card-claude'),
+            findActor(indicator.menu.actor,
+                'provider-card-history-eligibility-companion'),
+            ...historySection.get_children().slice(1),
+        ].filter(Boolean);
+        for (const actor of isolatedForScale)
+            actor.hide();
+        const themeContext = St.ThemeContext.get_for_stage(global.stage);
+        const originalScale = themeContext.scale_factor;
+        themeContext.set_scale_factor(2);
+        await Scripting.sleep(150);
+        await captureActor(() => indicator.menu.actor, RANGE_CAPTURES.scaled);
+        themeContext.set_scale_factor(originalScale);
+        for (const actor of isolatedForScale)
+            actor.show();
+        await Scripting.sleep(150);
+        await pressKey(keyboard, Clutter.KEY_Escape);
+        await waitFor(() => !indicator.menu.isOpen && !rangeOptions.visible,
+            'scaled selector resets after Shell Escape');
+
+        await reopenUsagePopup();
+        rangeTrigger.grab_key_focus();
+        await pressKey(keyboard, Clutter.KEY_Down);
+        await pressKey(keyboard, Clutter.KEY_Down);
+        assert(global.stage.get_key_focus()?.get_name() ===
+            'select-history-range-option-1d',
+        'Down moves to the next option');
+        await pressKey(keyboard, Clutter.KEY_Home);
+        assert(global.stage.get_key_focus()?.get_name() ===
+            'select-history-range-option-1h',
+        'Home focuses the first option');
+        await pressKey(keyboard, Clutter.KEY_Up);
+        assert(global.stage.get_key_focus()?.get_name() ===
+            'select-history-range-option-30d',
+        'Up wraps from the first option to the last');
+        await pressKey(keyboard, Clutter.KEY_Down);
+        assert(global.stage.get_key_focus()?.get_name() ===
+            'select-history-range-option-1h',
+        'Down wraps from the last option to the first');
+        await pressKey(keyboard, Clutter.KEY_End);
+        assert(global.stage.get_key_focus()?.get_name() ===
+            'select-history-range-option-30d',
+        'End focuses the last option');
+        await pressKey(keyboard, Clutter.KEY_Escape);
+        await waitFor(() => !indicator.menu.isOpen && !rangeOptions.visible,
+            'navigation Escape closes and resets the popup');
+        await reopenUsagePopup();
+        rangeTrigger.grab_key_focus();
+        await pressKey(keyboard, Clutter.KEY_Up);
+        assert(global.stage.get_key_focus()?.get_name() ===
+            'select-history-range-option-6h',
+        'trigger Up opens on the selected option');
+        await pressKey(keyboard, Clutter.KEY_Escape);
+        await waitFor(() => !indicator.menu.isOpen && !rangeOptions.visible,
+            'trigger Up path resets after Shell Escape');
+
+        await reopenUsagePopup();
+        rangeTrigger.grab_key_focus();
+        await pressKey(keyboard, Clutter.KEY_Return);
+        await pressKey(keyboard, Clutter.KEY_Home);
+        await pressKey(keyboard, Clutter.KEY_space);
+        await waitFor(() => extension.getSurfaceSnapshot().preferences
+            .historyRange.id === '1h', 'Space selects the 1-hour range');
+        rangeTrigger = findActor(indicator.menu.actor, 'select-history-range');
+        assert(rangeSettings.get_enum('history-range') === 0 &&
+            indicator.menu.isOpen && global.stage.get_key_focus() === rangeTrigger &&
+            findActor(indicator.menu.actor, 'history-chart'),
+        'changed selection persists and restores focus without closing the popup');
+
+        await pressKey(keyboard, Clutter.KEY_Down);
+        await pressKey(keyboard, Clutter.KEY_End);
+        await pressKey(keyboard, Clutter.KEY_Return);
         await waitFor(() => findActor(indicator.menu.actor, 'history-empty'),
             'an uncovered range shows the empty state');
-        assert(!findActor(indicator.menu.actor, 'history-chart'),
-            'no chart is drawn for an uncovered range');
-        assert(findActor(indicator.menu.actor, 'range-6h'),
-            'the range selector stays so the user is not trapped');
-        findActor(indicator.menu.actor, 'range-6h').emit('clicked', 1);
+        rangeTrigger = findActor(indicator.menu.actor, 'select-history-range');
+        assert(rangeSettings.get_enum('history-range') === 4 &&
+            extension.getSurfaceSnapshot().preferences.historyRange.id === '30d' &&
+            !findActor(indicator.menu.actor, 'history-chart') &&
+            rangeTrigger && global.stage.get_key_focus() === rangeTrigger,
+        'the uncovered range persists and keeps the selector as an escape');
+
+        await pressKey(keyboard, Clutter.KEY_space);
+        await pressKey(keyboard, Clutter.KEY_space);
+        assert(rangeChanges === 2 && rangeSettings.get_enum('history-range') === 4 &&
+            global.stage.get_key_focus() === rangeTrigger,
+        'reselecting the active range closes without another durable change');
+
+        await pressKey(keyboard, Clutter.KEY_Down);
+        await pressKey(keyboard, Clutter.KEY_Home);
+        await pressKey(keyboard, Clutter.KEY_Down);
+        await pressKey(keyboard, Clutter.KEY_Return);
         await waitFor(() => findActor(indicator.menu.actor, 'history-chart'),
             'switching back to a covered range restores the chart');
+        rangeTrigger = findActor(indicator.menu.actor, 'select-history-range');
+        assert(rangeSettings.get_enum('history-range') === 1 &&
+            extension.getSurfaceSnapshot().preferences.historyRange.id === '6h' &&
+            rangeChanges === 3 && indicator.menu.isOpen &&
+            global.stage.get_key_focus() === rangeTrigger,
+        'restored range persists once and preserves popup focus ownership');
+        assert(state.requests === requestsBeforeRangeInteraction &&
+            historyText() === historyBeforeRangeInteraction,
+        'all range interactions preserve provider requests and history bytes');
+        rangeSettings.disconnect(rangeChangedId);
 
         findActor(indicator.menu.actor, 'settings-button').emit('clicked', 1);
         await waitFor(() => findActor(indicator.menu.actor, 'toggle-showUsageHistory'),

@@ -1,10 +1,10 @@
 ---
 id: BRIEF-LOCAL-HISTORY
 type: product-brief
-status: active
+status: delivered
 owner: hugo
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-19
 source_docs:
   - docs/product/pitch.md
   - docs/product/feature-horizon.md
@@ -43,9 +43,9 @@ capability:
 - The trajectory is built from samples captured during the existing opportunistic
   refresh cycle, so it adds no background monitoring when no agent is present.
 - History is local-only and durable across Shell restarts; nothing leaves the machine.
-- It reuses the shipped `HistoryChart`, `RangeSelector`, and `Legend` primitives and
-  the existing local-history and range controls unchanged; live trajectory introduces
-  no new visual language.
+- It reuses the shipped `HistoryChart`, `CompactSelect`, and `Legend` primitives and
+  the existing local-history and range preferences; live trajectory introduces no
+  provider-specific visual language.
 
 ## Non-Goals
 
@@ -84,26 +84,25 @@ capability:
 | Bundle | Ships (intent) | Likely Spec |
 |---|---|---|
 | Sample store | Durable local recording of per-provider usage samples captured during the existing refresh cycle, with a retention window and range windows | SPEC-LOCAL-HISTORY |
-| Popup chart | Merged multi-provider trajectory, range selector, and legend wired into the production popup behind the local-history setting | SPEC-LOCAL-HISTORY |
+| Popup chart | Merged multi-provider trajectory, compact range select, and legend wired into the production popup behind the local-history setting | SPEC-LOCAL-HISTORY |
 
 ## Red-Team
 
 | Challenge | Resolution (resolved / deferred) |
 |---|---|
 | History needs samples over time, but the pitch forbids a background monitoring obligation | Resolved — samples are recorded only during the existing eligible refresh; no open agent means no polling and no new samples, so history is what was seen while in use, not continuous surveillance. |
-| The product persists nothing durable except panel preferences | Open — the durable sample store's mechanism, cadence, retention, and range set are the central spec decision; this brief flags it and the spec freezes it before the chart is wired. |
+| The product persists nothing durable except panel preferences | Resolved — the shipped bounded JSON sample store records only local percentage-and-time samples during the existing eligible refresh. |
 | A chart could imply usage data ships somewhere | Resolved — local-only; the pitch's no-sharing constraint binds and nothing leaves the machine. |
-| Sparse, irregular samples could render a misleading continuous line | Deferred — the spec decides gap handling against the catalog's continuous, zero-origin series design. |
-| Range set and retention are unspecified | Deferred — the catalog offers `1h`/`6h`/`1d`/`7d`/`30d`; the spec picks the shipped set and retention against store cost. |
+| Sparse, irregular samples could render a misleading continuous line | Resolved — fixed 30-point ranges carry the last observed value forward and omit a window until it has coverage at the range start. |
+| Range set and retention are unspecified | Resolved — `1h`/`6h`/`1d`/`7d`/`30d` ship against a bounded 30-day store. |
 
 ## Decision
 
-Promoted from the feature horizon by the owner on 2026-07-17; scope and the local-only,
-no-new-polling framing were confirmed at the promotion gate. Persistence remains the
-open question the spec must resolve.
+Promoted from the feature horizon by the owner on 2026-07-17; the local-only,
+no-new-polling capability shipped on 2026-07-19 with a bounded durable store, merged
+trajectory, persisted compact range select, and off switch.
 
 ## Next Step
 
-Author SPEC-LOCAL-HISTORY and freeze the durable sample-store boundary — mechanism,
-sample cadence, retention window, and range set — before wiring the merged chart into
-the production popup.
+Observe the local trajectory during normal use and keep any future sync, alerting, or
+provider expansion behind a separately promoted brief.

@@ -97,8 +97,10 @@ Owning Spec: [SPEC-LOCAL-HISTORY](specs/2026-07-17-local-history.md)
 
 1. While using an agent with local history on, each refresh records a durable sample and
    the popup shows the merged multi-provider trajectory for the selected range.
-2. The user chooses a range from the compact history select; the chart re-renders over
-   the new window from recorded samples without a network request.
+2. The user opens the compact history select with the pointer or keyboard, navigates
+   its choices, and selects a range; the chart re-renders over the new window from
+   recorded samples without a network request or history mutation. An uncovered range
+   keeps the select available, and Escape closes the containing Shell popup.
 3. After a GNOME Shell restart, the popup honors the persisted history and range choice;
    no sample was recorded while no provider was eligible.
 4. The user turns local history off; recording stops and the chart disappears while the

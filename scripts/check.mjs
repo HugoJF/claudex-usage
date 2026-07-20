@@ -51,6 +51,9 @@ const surfaceCaptures = [
     'surface-settings-cadence-focus-hover.png',
     'surface-settings-light-100.png',
     'surface-left-popup-dark-100.png',
+    'surface-history-range-open-dark-100.png',
+    'surface-history-range-open-light-100.png',
+    'surface-history-range-open-dark-200.png',
 ];
 
 function run(command, args, options = {}) {
@@ -336,6 +339,7 @@ import Gio from 'gi://Gio';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {
+    CompactSelect,
     HistoryChart,
     PanelIndicator,
     PopoverScaffold,
@@ -361,6 +365,21 @@ export default class SharedProofExtension extends Extension {
         const tokens = loadTokens(this.path);
         this.tokens = tokens;
         this.events = [];
+        const selectChoices = [
+            {id: 'burst', label: 'Burst', accessibleName: 'Burst option'},
+            {id: 'season', label: 'Season', accessibleName: 'Season option'},
+        ];
+        this.select = CompactSelect({
+            id: 'proof-window',
+            choices: selectChoices,
+            selected: 'season',
+            accessibleName: 'Proof window, Season',
+            onSelect: id => this.events.push(['select', id]),
+            tokens,
+        });
+        selectChoices[0].id = 'mutated';
+        selectChoices[0].label = 'Mutated';
+        selectChoices[0].accessibleName = 'Mutated option';
         this.panel = PanelIndicator({
             id: 'proof-panel',
             groups: [{
@@ -412,7 +431,8 @@ export default class SharedProofExtension extends Extension {
         this.root = PopoverScaffold({
             id: 'proof-popover',
             view: 'proof',
-            children: [this.panel, this.progress, this.range, this.setting, this.chart],
+            children: [this.panel, this.progress, this.range, this.select,
+                this.setting, this.chart],
         });
         this.destroyed = false;
         this.root.connect('destroy', () => {
@@ -425,6 +445,7 @@ export default class SharedProofExtension extends Extension {
             root: this.root,
             panel: this.panel,
             range: this.range,
+            select: this.select,
             setting: this.setting,
             progress: this.progress,
             events: this.events,
@@ -435,46 +456,91 @@ export default class SharedProofExtension extends Extension {
     validationFailures() {
         const baseSeries = {id: 'line', values: [0, 100],
             dataRole: 'dataClaudeShort', strokeWidth: 1};
+        const compact = {
+            id: 'proof',
+            choices: [
+                {id: 'one', label: 'One', accessibleName: 'One option'},
+                {id: 'two', label: 'Two', accessibleName: 'Two option'},
+            ],
+            selected: 'one',
+            accessibleName: 'Proof select, One',
+            onSelect: () => {},
+            tokens: this.tokens,
+        };
         const probes = [
-            () => validatePresentationModels({ids: ['unsafe id']}),
-            () => validatePresentationModels({ids: ['same', 'same']}),
-            () => validatePresentationModels({percentages: [NaN]}),
-            () => validatePresentationModels({percentages: [-1]}),
-            () => validatePresentationModels({percentages: [101]}),
-            () => validatePresentationModels({historySeries: []}),
-            () => validatePresentationModels({historySeries: [
+            ['unsafe id', () => validatePresentationModels({ids: ['unsafe id']})],
+            ['duplicate id', () => validatePresentationModels({ids: ['same', 'same']})],
+            ['not-a-number percent', () => validatePresentationModels({percentages: [NaN]})],
+            ['negative percent', () => validatePresentationModels({percentages: [-1]})],
+            ['overflow percent', () => validatePresentationModels({percentages: [101]})],
+            ['empty history', () => validatePresentationModels({historySeries: []})],
+            ['short history', () => validatePresentationModels({historySeries: [
                 {...baseSeries, values: [1]},
-            ]}),
-            () => validatePresentationModels({historySeries: [
+            ]})],
+            ['unequal history', () => validatePresentationModels({historySeries: [
                 baseSeries,
                 {...baseSeries, id: 'other', values: [0, 1, 2]},
-            ]}),
-            () => validatePresentationModels({historySeries: [
+            ]})],
+            ['infinite history', () => validatePresentationModels({historySeries: [
                 {...baseSeries, values: [0, Infinity]},
-            ]}),
-            () => validatePresentationModels({rangeChoices: [], selectedRange: 'x'}),
-            () => validatePresentationModels({rangeChoices: [
+            ]})],
+            ['empty ranges', () => validatePresentationModels(
+                {rangeChoices: [], selectedRange: 'x'})],
+            ['duplicate ranges', () => validatePresentationModels({rangeChoices: [
                 {id: 'x'}, {id: 'x'},
-            ], selectedRange: 'x'}),
-            () => validatePresentationModels({rangeChoices: [{id: 'x'}],
-                selectedRange: 'y'}),
-            () => validatePresentationModels({callbacks: [null]}),
-            () => validatePresentationModels({accessibleNames: ['']}),
-            () => validatePresentationModels({dataRoles: ['unsafe role']}),
-            () => validatePresentationModels({
+            ], selectedRange: 'x'})],
+            ['unknown range', () => validatePresentationModels(
+                {rangeChoices: [{id: 'x'}], selectedRange: 'y'})],
+            ['null callback', () => validatePresentationModels({callbacks: [null]})],
+            ['empty accessible name', () => validatePresentationModels(
+                {accessibleNames: ['']})],
+            ['unsafe data role', () => validatePresentationModels(
+                {dataRoles: ['unsafe role']})],
+            ['unknown data role', () => validatePresentationModels({
                 dataRoles: ['dataMissing'],
                 tokens: this.tokens,
-            }),
-            () => Switch({active: 'false', tokens: this.tokens}),
+            })],
+            ['invalid switch', () => Switch({active: 'false', tokens: this.tokens})],
+            ['compact duplicate ids', () => CompactSelect({
+                ...compact,
+                choices: compact.choices.map(choice => ({...choice, id: 'same'})),
+            })],
+            ['compact unknown selection', () => CompactSelect({
+                ...compact, selected: 'missing',
+            })],
+            ['compact empty label', () => CompactSelect({
+                ...compact,
+                choices: [{...compact.choices[0], label: ''}, compact.choices[1]],
+            })],
+            ['compact empty option name', () => CompactSelect({
+                ...compact,
+                choices: [{...compact.choices[0], accessibleName: ''},
+                    compact.choices[1]],
+            })],
+            ['compact empty name', () => CompactSelect({
+                ...compact, accessibleName: '',
+            })],
+            ['compact null callback', () => CompactSelect({
+                ...compact, onSelect: null,
+            })],
+            ['compact missing tokens', () => CompactSelect({
+                ...compact, tokens: {},
+            })],
+            ['compact zero icon', () => CompactSelect({
+                ...compact, tokens: {size: {settingsIcon: 0}},
+            })],
+            ['compact fractional icon', () => CompactSelect({
+                ...compact, tokens: {size: {settingsIcon: 1.5}},
+            })],
         ];
-        return probes.map(probe => {
+        return Object.fromEntries(probes.map(([name, probe]) => {
             try {
                 probe();
-                return false;
+                return [name, false];
             } catch {
-                return true;
+                return [name, true];
             }
-        });
+        }));
     }
 
     destroyProof() {
@@ -485,6 +551,7 @@ export default class SharedProofExtension extends Extension {
     disable() {
         this.destroyProof();
         this.range = null;
+        this.select = null;
         this.panel = null;
         this.setting = null;
         this.progress = null;
@@ -506,6 +573,24 @@ function assert(condition, message) {
     if (!condition)
         throw new Error(\`SURF-001 proof failed: \${message}\`);
 }
+function findActor(root, name) {
+    if (root?.get_name?.() === name)
+        return root;
+    for (const child of root?.get_children?.() ?? []) {
+        const found = findActor(child, name);
+        if (found)
+            return found;
+    }
+    return null;
+}
+function hasRelation(source, type, target) {
+    const relation = source.get_accessible().ref_relation_set()
+        .get_relation_by_type(type);
+    return relation?.get_target().includes(target.get_accessible()) ?? false;
+}
+function hasState(actor, state) {
+    return actor.get_accessible().ref_state_set().contains_state(state);
+}
 export async function run() {
     await Scripting.sleep(180);
     const record = Main.extensionManager.lookup(UUID);
@@ -525,13 +610,36 @@ export async function run() {
         'range role is preserved');
     assert(proof.setting.accessible_role === Atk.Role.SWITCH,
         'settings role is preserved');
+    const selectTrigger = findActor(proof.select, 'select-proof-window');
+    const selectOptions = findActor(proof.select, 'select-proof-window-options');
+    const burstOption = findActor(proof.select,
+        'select-proof-window-option-burst');
+    assert(selectTrigger.accessible_role === Atk.Role.COMBO_BOX &&
+        hasState(selectTrigger, Atk.StateType.EXPANDABLE),
+    'compact select trigger exposes its expandable combo role');
+    assert(selectOptions.accessible_role === Atk.Role.LIST_BOX &&
+        hasRelation(selectTrigger, Atk.RelationType.CONTROLLER_FOR,
+            selectOptions) &&
+        hasRelation(selectOptions, Atk.RelationType.CONTROLLED_BY,
+            selectTrigger),
+    'compact select relates its trigger and list');
+    assert(!selectOptions.visible && !burstOption.can_focus,
+        'closed compact select removes options from focus');
+    selectTrigger.emit('clicked', 1);
+    assert(selectOptions.visible && burstOption.can_focus,
+        'open compact select exposes focusable options');
+    burstOption.emit('clicked', 1);
+    assert(!selectOptions.visible && !burstOption.can_focus &&
+        burstOption.get_accessible_name() === 'Burst option',
+    'compact select snapshots option records and closes after selection');
     choices[0].emit('clicked', 1);
     proof.setting.emit('clicked', 1);
     assert(JSON.stringify(proof.events) ===
-        JSON.stringify([['range', 'burst'], ['toggle', 'ambientMode']]),
+        JSON.stringify([['select', 'burst'], ['range', 'burst'],
+            ['toggle', 'ambientMode']]),
         'callbacks receive stable model ids');
-    assert(extension.validationFailures().every(Boolean),
-        'all invalid presentation models fail closed');
+    for (const [name, rejected] of Object.entries(extension.validationFailures()))
+        assert(rejected, \`invalid presentation model fails closed: \${name}\`);
     extension.destroyProof();
     assert(extension.getProof().root === null && extension.getProof().destroyed,
         'second consumer destroys its actor tree');
@@ -557,6 +665,8 @@ const journeyProcRoot = path.join(temporaryRoot, 'journey-proc');
 const claudeJourneyProcRoot = path.join(temporaryRoot, 'claude-journey-proc');
 const codexHome = path.join(temporaryRoot, 'codex-home');
 const claudeConfigHome = path.join(temporaryRoot, 'claude-home');
+const codexAdapterHistoryDir = path.join(temporaryRoot, 'codex-adapter-history');
+const claudeAdapterHistoryDir = path.join(temporaryRoot, 'claude-adapter-history');
 const claudeHistoryDir = path.join(temporaryRoot, 'claude-history');
 const missingSettingsFixtureDir = path.join(temporaryRoot, 'missing-settings-fixture');
 const missingSettingsConfigDir = path.join(temporaryRoot, 'missing-settings-config');
@@ -568,7 +678,8 @@ const captureDir = updateCaptures
 for (const directory of [packageDir, productionPackageDir, proofPackageDir,
     captureDir, settingsFixtureDir, fixturePackageDir, journeyPackageDir,
     claudeJourneyPackageDir, fixtureProcRoot, journeyProcRoot, claudeJourneyProcRoot,
-    codexHome, claudeConfigHome, claudeHistoryDir])
+    codexHome, claudeConfigHome, codexAdapterHistoryDir,
+    claudeAdapterHistoryDir, claudeHistoryDir])
     mkdirSync(directory, {recursive: true});
 assertLegacySettingsSeedGuard();
 assertCommandRejects('sh', [path.join(root, 'scripts/gsettings-session-wrapper.sh'),
@@ -690,8 +801,10 @@ try {
         '--disable-animations', '--extension', journeyZipPath,
         'tests/journeys/J-004-codex-usage.journey.test.js',
     ], {
-        env: {...process.env, CODEX_HOME: codexHome, CLAUDEX_FAKE_CODEX: fakeCodex,
-            CLAUDEX_PROC_ROOT: journeyProcRoot},
+        env: {...process.env, GSETTINGS_BACKEND: 'memory',
+            CODEX_HOME: codexHome, CLAUDEX_FAKE_CODEX: fakeCodex,
+            CLAUDEX_PROC_ROOT: journeyProcRoot,
+            CLAUDEX_HISTORY_DIR: codexAdapterHistoryDir},
     });
     const claudeJourneyZipPath = prepareProductionVariant(
         claudeJourneySourceDir, claudeJourneyPackageDir, sourceDir => {
@@ -705,8 +818,10 @@ try {
         '--disable-animations', '--extension', claudeJourneyZipPath,
         'tests/journeys/J-005-claude-usage.journey.test.js',
     ], {
-        env: {...process.env, CLAUDE_CONFIG_DIR: claudeConfigHome,
-            CLAUDEX_FAKE_CLAUDE: fakeClaude, CLAUDEX_PROC_ROOT: claudeJourneyProcRoot},
+        env: {...process.env, GSETTINGS_BACKEND: 'memory',
+            CLAUDE_CONFIG_DIR: claudeConfigHome,
+            CLAUDEX_FAKE_CLAUDE: fakeClaude, CLAUDEX_PROC_ROOT: claudeJourneyProcRoot,
+            CLAUDEX_HISTORY_DIR: claudeAdapterHistoryDir},
     });
     const seedNow = Date.now();
     const seedSample = (hoursAgo, percent) => [seedNow - hoursAgo * 3600 * 1000, percent];
@@ -721,7 +836,8 @@ try {
         '--disable-animations', '--extension', claudeJourneyZipPath,
         'tests/journeys/J-006-usage-history.journey.test.js',
     ], {
-        env: {...process.env, CLAUDE_CONFIG_DIR: claudeConfigHome,
+        env: {...process.env, GSETTINGS_BACKEND: 'memory',
+            CLAUDE_CONFIG_DIR: claudeConfigHome,
             CLAUDEX_FAKE_CLAUDE: fakeClaude, CLAUDEX_PROC_ROOT: claudeJourneyProcRoot,
             CLAUDEX_HISTORY_DIR: claudeHistoryDir, CLAUDEX_CAPTURE_DIR: captureDir},
     });
