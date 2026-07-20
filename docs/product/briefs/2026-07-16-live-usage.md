@@ -43,8 +43,8 @@ capability:
   are.
 - Adapters feed the surface through one narrow provider contract, so adding a
   provider never reshapes the surface.
-- The surface reuses the shipped Direction D primitives unchanged; live behavior
-  introduces no new visual language.
+- The surface stays within Direction D; refinements enter only as explicit,
+  token-backed primitive variants reviewed in the developer Direction Lab.
 
 ## Non-Goals
 
@@ -76,6 +76,8 @@ capability:
   pitch and bind every bundle.
 - Panel-visibility settings persist across sessions; the storage mechanism is
   spec and decision-log territory.
+- Time pace is an optional visual comparison between utilization and the elapsed
+  portion of a provider window. It is not a quota target, forecast, or alert.
 
 ## Feature Bundles
 
@@ -96,11 +98,17 @@ capability:
 | Concrete app IDs, window classes, and process-vs-window detection are unknown | Resolved — both providers gate on an exact current-user process (`codex`, `claude`); CLAUDE-001 freezes the Claude credential and response boundary before integration. |
 | The working Codex usage endpoint is internal and may change | Resolved — accepted as the bundle's sole internal-endpoint exception; CODEX-001 freezes a fail-closed fixture contract before CODEX-002 integrates it. |
 | Refresh cadence balancing usefulness and provider load | Resolved — a user-facing cadence choice ships in the surface settings (owner decision 2026-07-16); the value set and default stay decision-log territory. |
+| Five inline history ranges compete with the popup header and new actions | Resolved — retain inline access through one compact select menu; selection still performs no provider request. |
+| A pace guide could imply a provider-prescribed or optimal usage target | Resolved — name it Time pace, derive it only from elapsed window time, make it globally disableable, and show no ahead/behind judgment. |
+| Relative freshness, reset copy, and a moving time marker could add provider work | Resolved — one presentation-only minute tick updates visible copy and geometry without starting a provider refresh. |
+| Refresh feedback could require a second completion-state timer | Resolved — show a busy refresh icon only for the controller's existing in-flight state; the footer timestamp is completion feedback. |
+| Muting the compact 5-hour value could make color the only identifier | Resolved — keep stable provider/window order and explicit window names in accessibility while using the existing muted foreground role visually. |
 
 ## Decision
 
-Accepted by the owner on 2026-07-16. Scope, indicator model, and chart deferral
-were confirmed at the promotion gate.
+Accepted by the owner. The unified indicator model and provider boundaries remain
+fixed; the compact-control, time-pace, and feedback refinements were confirmed on
+2026-07-19.
 
 ## Next Step
 
@@ -108,7 +116,5 @@ Delivered: the production surface and both provider adapters
 ([SPEC-USAGE-SURFACE](../specs/2026-07-16-usage-surface.md),
 [SPEC-CODEX-ADAPTER](../specs/2026-07-17-codex-adapter.md),
 [SPEC-CLAUDE-ADAPTER](../specs/2026-07-17-claude-adapter.md)) ship the unified panel item
-with live Codex weekly and Claude 5-hour and weekly usage. Remaining follow-ups are
-separate decisions on the [feature horizon](../feature-horizon.md): validate live values
-against each provider's own view, then weigh distribution, local usage history, and
-threshold notifications.
+with live Codex weekly and Claude 5-hour and weekly usage. The reopened surface work
+refines glanceability and time feedback without changing the adapter boundary.

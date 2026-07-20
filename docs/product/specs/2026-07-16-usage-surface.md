@@ -1,7 +1,7 @@
 ---
 id: SPEC-USAGE-SURFACE
 type: spec
-status: done
+status: draft
 owner: hugo
 created: 2026-07-16
 updated: 2026-07-19
@@ -18,15 +18,10 @@ supersedes: []
 
 ## Goal
 
-Ship the production extension shell: a unified panel item and popup that present
-whatever eligible providers supply through one provider contract, so live values
-have a surface before any adapter exists.
+Ship one production panel item and popup that present every eligible provider
+through one provider contract.
 
 ## User Journeys
-
-Neither journey extends J-001: that journey is the developer-facing catalog review
-and stays untouched. These are the product's first user journeys, composing the
-primitives J-001 validated.
 
 ### J-002 — Glance at live usage (creates)
 
@@ -36,12 +31,14 @@ Acceptance:
 
 - **J-002.1** The panel item exists only while at least one registered provider
   reports eligible, composes provider marks with enabled percentages at native panel
-  height, and shows each newly eligible provider's current values without waiting for
-  an existing refresh cadence.
-- **J-002.2** The popup groups metrics by provider; each visible window shows its
-  percentage, zero-origin bar, and reset time from provider-supplied data.
-- **J-002.3** The refresh action requests fresh values and updates the freshness
-  text in place.
+  height, distinguishes Claude's 5-hour value with the existing muted foreground
+  role, and shows newly eligible values without waiting for cadence.
+- **J-002.2** Compact provider cards omit redundant provider detail; each visible
+  window shows its percentage, zero-origin bar, reset time, and an optional neutral
+  Time pace marker derived from that window's elapsed time.
+- **J-002.3** A refresh icon beside settings requests fresh values and exposes its
+  in-flight state. Freshness, reset copy, and Time pace advance while visible without
+  a provider request.
 - **J-002.4** An unavailable provider renders the unavailable treatment with no
   numeric or stale values; other providers stay live.
 - **J-002.5** When no provider is eligible, the panel item is removed and no
@@ -58,78 +55,69 @@ Acceptance:
   the popup.
 - **J-003.3** A persisted Used/Left choice updates every current and historical
   percentage immediately while retaining used percentages as canonical source data.
-- **J-003.4** The refresh-cadence row presents a fixed enumerated choice set and
+- **J-003.4** A global Time pace setting defaults on and removes or restores every
+  marker immediately without a provider refresh.
+- **J-003.5** The refresh-cadence row presents a fixed enumerated choice set and
   applies the selection without restart.
-- **J-003.5** Visibility, usage-display, and cadence choices survive a GNOME Shell
-  restart via the storage named in Architecture.
+- **J-003.6** Visibility, usage-display, Time pace, and cadence choices survive a
+  GNOME Shell restart via the storage named in Architecture.
 
 ## Surface Map
 
 - Absent panel — no eligible provider: no item, no polling.
-- Unified panel item — eligible providers' marks and enabled percentages.
-- Usage popup — provider cards and freshness footer; chart composition remains owned
-  by SPEC-LOCAL-HISTORY.
+- Unified panel item — eligible providers' marks and enabled percentages, with the
+  compact Claude 5-hour value visually muted.
+- Usage popup cards — compact provider names, current windows, reset timing, and
+  optional Time pace markers; chart composition remains owned by SPEC-LOCAL-HISTORY.
+- Usage chrome — refresh with in-flight feedback beside settings and a status-only
+  freshness footer.
 - Current and historical percentages — selected Used or Left presentation without
   changing provider or history data.
 - Unavailable card state — dimmed textual notice, no values.
-- Settings view — back action, three limit-visibility rows, refresh-cadence
-  choice row, and usage-display choice row.
+- Settings view — back action, three limit-visibility rows, refresh-cadence and
+  usage-display choices, plus the global Time pace switch.
 
 ## Cross-Journey Acceptance
 
-- The stub provider exists only in the review harness; the installed production
-  package registers no provider until an adapter spec ships one.
+- Provider fixtures remain confined to the review harness.
 - No credential or provider payload is persisted; results and history stay canonical used percentages.
 
 ## Design
 
-Canonical reference: [Direction D — Selected Blend](../../../design/direction-lab/DIRECTION-BRIEF.md#d--selected-blend).
-Deviations from [BRIEF-LIVE-USAGE](../briefs/2026-07-16-live-usage.md) scope
-decisions: the history chart, legend, and range selector remain owned by
-[SPEC-LOCAL-HISTORY](2026-07-17-local-history.md); this surface adds one choice row
-to the approved settings composition.
+Canonical reference: [Usage refinement, variant A — Quiet Utility](../../../design/direction-lab/USAGE-REFINEMENT-EXPLORATION.md#variant-a--quiet-utility),
+within [Direction D — Selected Blend](../../../design/direction-lab/DIRECTION-BRIEF.md#d--selected-blend).
 
 Primitives composed: `PopoverScaffold`, `PanelIndicator`, `ProviderGroup`,
 `ProviderCard`, `UsageMetric`, `ProgressBar`, `IconButton`, `SettingsRow`,
 `Switch`, `ChoiceRow`, and `FooterStatus`.
 
-New primitives introduced: none. The unavailable state composes existing
-primitives as a stamped direction-lab variant with capture evidence, added within
-its build slice.
+New primitive/variant budget: a compact select menu, per-value panel tone, optional
+provider detail, IconButton busy state, status-only footer, and an optional neutral
+ProgressBar marker. Shared changes land only in their owning slices.
 
 ## Contracts
 
 - API: [API contracts](../../engineering/api-contracts.md) — delta: add the
-  provider-slot contract (identity, marks, eligibility signal, usage windows with
-  reset times, availability state), authored with `SURF-002`.
+  fixed duration of each declared provider window for Time pace presentation.
 - Data: [data model](../../engineering/data-model.md) — delta: persisted panel
-  preferences (limit visibility, display basis, refresh cadence); nothing else
-  durable for this feature.
+  preferences add one global, default-on Time pace boolean; no pace value is stored.
 - Decisions: [decision log](../../engineering/decision-log.md) — cadence value set
   and default, production extension UUID; recorded at implementation.
 
 ## Architecture
 
-- Neutral token/geometry, primitive, and stylesheet sources live under
-  `extension/shared`; the direction-lab catalog remains the unchanged developer
-  review vehicle.
-- `SURF-001` proves reuse with a generated temporary second-consumer GNOME package
-  using the same shared JavaScript, tokens, and generated stylesheet.
-- The persistent production extension source and its own UUID begin in `SURF-002`;
-  the temporary proof is not the production shell.
+- Neutral presentation sources under `extension/shared` serve the developer
+  Direction Lab and production extension.
 - Providers are in-process GJS adapter modules registered against the surface's
-  provider-slot contract; the surface owns lifecycle — registration,
-  eligibility-driven visibility, and poll start/stop.
-- The production schema persists panel preferences and the accepted cadence choice;
-  refresh remains pull-based while at least one provider is eligible.
+  provider-slot contract; the surface owns lifecycle and pull-based refresh.
+- GSettings persists presentation and cadence preferences.
+- One minute-aligned presentation timer exists only while the surface is visible. It
+  advances relative copy and Time pace geometry but never invokes a provider.
 
 ## Preserve
 
-- Lifecycle, credential, and fail-closed constraints stay canonical in the
-  [pitch](../pitch.md) and bind every surface state.
-- The primitive inventory budget: composition only; any new primitive is a
-  reviewed design-system change.
-- The J-001 catalog remains installable and unchanged.
+- Preserve the [pitch](../pitch.md) lifecycle, credential, and fail-closed constraints.
+- New primitives require design-system review; J-001 stays installable.
 
 ## Build Slices
 
@@ -149,15 +137,27 @@ its build slice.
   immediately to current values, progress geometry, accessibility, and local-history
   charting without rewriting provider or stored usage. Medium: one presentation
   invariant, at most 15 edited files and 700 handwritten lines.
+- [ ] `SURF-006` — move manual refresh beside settings, expose in-flight feedback,
+  make the footer status-only, and advance freshness and reset copy through one
+  visibility-bound presentation tick with no provider request. Medium: one temporal
+  presentation invariant, at most 15 edited files and 700 handwritten lines.
+- [ ] `SURF-007` — remove redundant provider detail and give the compact Claude
+  5-hour value the existing muted foreground role while preserving explicit window
+  accessibility. Small: one hierarchy invariant, at most 8 edited files and 350
+  handwritten lines.
+- [ ] `SURF-008` — add fixed provider-window duration, a global default-on Time pace
+  setting, and optional neutral markers that follow Used/Left presentation without
+  changing provider or stored usage. Medium: one duration-to-marker invariant, at
+  most 15 edited files and 800 handwritten lines.
 
 ## Non-Scope
 
 - History storage, recording, range behavior, and retention
   ([SPEC-LOCAL-HISTORY](2026-07-17-local-history.md)).
-- Local-history settings row (parked capability).
 - Live provider adapters and real eligibility detection (SPEC-CLAUDE-ADAPTER,
   SPEC-CODEX-ADAPTER); the shell trusts the contract's eligibility signal.
 - Publishing to extensions.gnome.org.
+- Pace alerts, forecasts, budgets, or ahead/behind judgments.
 
 ## Open Questions
 

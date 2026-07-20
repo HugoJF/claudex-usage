@@ -1,7 +1,7 @@
 ---
 id: SPEC-LOCAL-HISTORY
 type: spec
-status: done
+status: draft
 owner: hugo
 created: 2026-07-17
 updated: 2026-07-17
@@ -33,8 +33,8 @@ Acceptance:
 - **J-006.1** While local history is enabled and a provider is eligible, each refresh
   records a durable local sample and the popup shows the merged trajectory for the
   selected range.
-- **J-006.2** Changing the range re-renders the chart over the new window from recorded
-  samples, without a network request and without discarding history.
+- **J-006.2** Choosing a range from one compact select re-renders the chart over the
+  new window from recorded samples, without a network request or discarded history.
 - **J-006.3** History and the selected range survive a GNOME Shell restart; no sample is
   recorded while no provider is eligible.
 - **J-006.4** Turning local history off stops recording and removes the chart while the
@@ -42,7 +42,7 @@ Acceptance:
 
 ## Surface Map
 
-- Usage popup chart — merged multi-provider trajectory, range selector, and legend,
+- Usage popup chart — merged multi-provider trajectory, compact range select, and legend,
   drawn from recorded samples while local history is on.
 - Settings — the local-history toggle and range choice persist across sessions.
 - Absent-history state — with local history off or no samples yet, the popup shows
@@ -61,10 +61,11 @@ Acceptance:
 
 ## Design
 
-Canonical reference: [Direction D — Selected Blend](../../../design/direction-lab/DIRECTION-BRIEF.md#d--selected-blend).
-The popup composes the existing `HistoryChart`, `RangeSelector`, and `Legend` and the
-settings local-history and range controls. Claude 5-hour keeps its 1 px line and both
-weekly series their 2.5 px lines. New primitives: none.
+Canonical reference: [Usage refinement, variant A — Quiet Utility](../../../design/direction-lab/USAGE-REFINEMENT-EXPLORATION.md#variant-a--quiet-utility),
+within [Direction D — Selected Blend](../../../design/direction-lab/DIRECTION-BRIEF.md#d--selected-blend).
+The popup composes `HistoryChart`, `Legend`, and a proposed compact select-menu
+primitive. Claude 5-hour keeps its 1 px line and both weekly series their 2.5 px
+lines. The persisted range and chart geometry stay unchanged.
 
 ## Contracts
 
@@ -104,6 +105,10 @@ read boundary; the surface continues to own polling, rendering, and provider lif
   and range settings into the production popup behind the store, and prove J-006 through
   the production surface. Medium: one recording-to-presentation invariant, at most 15
   files and 800 handwritten lines.
+- [ ] `HIST-003` — replace the five always-visible range buttons with one compact,
+  keyboard-accessible select menu while preserving the range enum, empty-range escape,
+  and no-request rerender behavior. Medium: one range-selection invariant, at most 12
+  edited files and 550 handwritten lines.
 
 ## Non-Scope
 
@@ -115,8 +120,4 @@ read boundary; the surface continues to own polling, rendering, and provider lif
 
 ## Open Questions
 
-- HIST-001 must freeze the durable store before HIST-002: the record boundary (a bounded
-  per-provider sample ring is the owner's recommended default), the sample cadence
-  relative to the refresh cycle, the retention window, the shipped subset of
-  `1h`/`6h`/`1d`/`7d`/`30d`, and how sparse or irregular samples render — a visible gap
-  versus interpolation — against the catalog's continuous, zero-origin series.
+None.

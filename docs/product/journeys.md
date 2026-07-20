@@ -35,11 +35,14 @@ Owning Spec: [SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)
 
 1. While at least one eligible provider is present, the unified panel item shows each
    eligible provider's mark and enabled percentages at native panel height; a newly
-   eligible provider's current values appear without waiting for the existing cadence.
-2. The user opens the popup and reviews provider cards: window percentages,
-   zero-origin bars, reset times, and the freshness footer with its refresh action.
-3. The user triggers refresh; values and freshness text update without the popup
-   closing.
+   eligible provider's current values appear without waiting for the existing cadence,
+   and Claude's compact 5-hour value is visually quieter than its weekly value.
+2. The user opens the popup and reviews compact provider cards: each named window has
+   its percentage, zero-origin bar, reset time, and — while Time pace is enabled — a
+   neutral marker comparing utilization with elapsed window time.
+3. The user triggers the refresh action beside settings; its busy state, current
+   values, freshness text, reset countdowns, and time markers update in place without
+   the popup closing or a passage-of-time update requesting provider data.
 4. A provider's data becomes unavailable; its card presents the unavailable notice
    with no numeric values while other providers stay live.
 5. The last eligible provider goes away; the panel item disappears and all polling
@@ -55,10 +58,12 @@ Owning Spec: [SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)
 3. The user changes Usage display from Used to Left; panel values, popup percentages
    and bars, accessibility, and any visible history trajectory update immediately
    while recorded usage remains unchanged.
-4. The user changes the refresh-cadence choice; the new cadence applies without a
+4. The user turns Time pace off or on; every current bar removes or restores its
+   marker immediately without refreshing a provider.
+5. The user changes the refresh-cadence choice; the new cadence applies without a
    restart.
-5. After GNOME Shell restarts, the panel and popup honor the persisted visibility,
-   usage-display, and cadence choices.
+6. After GNOME Shell restarts, the panel and popup honor the persisted visibility,
+   usage-display, Time pace, and cadence choices.
 
 ## J-004 — See Codex usage
 
@@ -92,8 +97,8 @@ Owning Spec: [SPEC-LOCAL-HISTORY](specs/2026-07-17-local-history.md)
 
 1. While using an agent with local history on, each refresh records a durable sample and
    the popup shows the merged multi-provider trajectory for the selected range.
-2. The user changes the range; the chart re-renders over the new window from recorded
-   samples without a network request.
+2. The user chooses a range from the compact history select; the chart re-renders over
+   the new window from recorded samples without a network request.
 3. After a GNOME Shell restart, the popup honors the persisted history and range choice;
    no sample was recorded while no provider was eligible.
 4. The user turns local history off; recording stops and the chart disappears while the
