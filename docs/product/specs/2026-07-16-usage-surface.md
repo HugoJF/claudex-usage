@@ -1,7 +1,7 @@
 ---
 id: SPEC-USAGE-SURFACE
 type: spec
-status: done
+status: active
 owner: hugo
 created: 2026-07-16
 updated: 2026-07-19
@@ -47,19 +47,21 @@ Acceptance:
 - **J-002.5** When no provider is eligible, the panel item is removed and no
   polling or timers remain.
 
-### J-003 — Persist panel preferences (creates)
+### J-003 — Persist display preferences (creates)
 
-Intent: control which limits the panel shows and how often values refresh.
+Intent: control how usage is presented and how often values refresh.
 
 Acceptance:
 
 - **J-003.1** The gear action opens the settings view inside the same popover.
 - **J-003.2** A visibility switch updates the panel immediately without closing
   the popup.
-- **J-003.3** The refresh-cadence row presents a fixed enumerated choice set and
+- **J-003.3** A persisted Used/Left choice updates every current and historical
+  percentage immediately while retaining used percentages as canonical source data.
+- **J-003.4** The refresh-cadence row presents a fixed enumerated choice set and
   applies the selection without restart.
-- **J-003.4** Visibility and cadence choices survive a GNOME Shell restart via the
-  storage named in Architecture.
+- **J-003.5** Visibility, usage-display, and cadence choices survive a GNOME Shell
+  restart via the storage named in Architecture.
 
 ## Surface Map
 
@@ -67,22 +69,25 @@ Acceptance:
 - Unified panel item — eligible providers' marks and enabled percentages.
 - Usage popup — provider cards, freshness footer with refresh action; no history
   chart.
+- Current and historical percentages — selected Used or Left presentation without
+  changing provider or history data.
 - Unavailable card state — dimmed textual notice, no values.
 - Settings view — back action, three limit-visibility rows, refresh-cadence
-  choice row.
+  choice row, and usage-display choice row.
 
 ## Cross-Journey Acceptance
 
 - The stub provider exists only in the review harness; the installed production
   package registers no provider until an adapter spec ships one.
-- No credential, provider payload, or usage value is ever persisted.
+- No credential or provider payload is persisted; results and history stay canonical used percentages.
 
 ## Design
 
 Canonical reference: [Direction D — Selected Blend](../../../design/direction-lab/DIRECTION-BRIEF.md#d--selected-blend).
-Deviations, both from [BRIEF-LIVE-USAGE](../briefs/2026-07-16-live-usage.md) scope
-decisions: the history chart, legend, and range selector are omitted; the settings
-view carries only the visibility rows and the refresh choice.
+Deviations from [BRIEF-LIVE-USAGE](../briefs/2026-07-16-live-usage.md) scope
+decisions: the history chart, legend, and range selector remain owned by
+[SPEC-LOCAL-HISTORY](2026-07-17-local-history.md); this surface adds one choice row
+to the approved settings composition.
 
 Primitives composed: `PopoverScaffold`, `PanelIndicator`, `ProviderGroup`,
 `ProviderCard`, `UsageMetric`, `ProgressBar`, `IconButton`, `SettingsRow`,
@@ -98,7 +103,8 @@ its build slice.
   provider-slot contract (identity, marks, eligibility signal, usage windows with
   reset times, availability state), authored with `SURF-002`.
 - Data: [data model](../../engineering/data-model.md) — delta: persisted panel
-  preferences (limit visibility, refresh cadence); nothing else durable.
+  preferences (limit visibility, display basis, refresh cadence); nothing else
+  durable for this feature.
 - Decisions: [decision log](../../engineering/decision-log.md) — cadence value set
   and default, production extension UUID; recorded at implementation.
 
@@ -139,10 +145,15 @@ its build slice.
   immediately through the shared refresh cycle, with atomic registration and ordered
   local-history completion evidence. Medium: one lifecycle/concurrency invariant, at
   most 15 edited files and 800 handwritten lines.
+- [ ] `SURF-005` — persist one global Used/Left presentation choice and apply it
+  immediately to current values, progress geometry, accessibility, and local-history
+  charting without rewriting provider or stored usage. Medium: one presentation
+  invariant, at most 15 edited files and 700 handwritten lines.
 
 ## Non-Scope
 
-- History chart, legend, and range selector (brief non-goal).
+- History storage, recording, range behavior, and retention
+  ([SPEC-LOCAL-HISTORY](2026-07-17-local-history.md)).
 - Local-history settings row (parked capability).
 - Live provider adapters and real eligibility detection (SPEC-CLAUDE-ADAPTER,
   SPEC-CODEX-ADAPTER); the shell trusts the contract's eligibility signal.

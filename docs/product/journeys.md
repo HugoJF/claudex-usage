@@ -9,7 +9,7 @@ each Spec declares which journeys it creates, extends, or joins.
 | --- | --- | --- | --- |
 | J-001 | Review usage interface primitives | SPEC-PRIMITIVE-CATALOG | `tests/journeys/J-001-primitive-catalog.journey.test.js` |
 | J-002 | Glance at live usage | SPEC-USAGE-SURFACE | `tests/journeys/J-002-usage-surface.journey.test.js` |
-| J-003 | Persist panel preferences | SPEC-USAGE-SURFACE | `tests/journeys/J-003-panel-preferences.journey.test.js` |
+| J-003 | Persist display preferences | SPEC-USAGE-SURFACE | `tests/journeys/J-003-panel-preferences.journey.test.js` |
 | J-004 | See Codex usage | SPEC-CODEX-ADAPTER | `tests/journeys/J-004-codex-usage.journey.test.js` |
 | J-005 | See Claude usage | SPEC-CLAUDE-ADAPTER | `tests/journeys/J-005-claude-usage.journey.test.js` |
 | J-006 | See usage history | SPEC-LOCAL-HISTORY | `tests/journeys/J-006-usage-history.journey.test.js` |
@@ -45,17 +45,20 @@ Owning Spec: [SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)
 5. The last eligible provider goes away; the panel item disappears and all polling
    stops.
 
-## J-003 — Persist panel preferences
+## J-003 — Persist display preferences
 
 Owning Spec: [SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)
 
 1. The user opens the settings view from the popup's gear action.
 2. The user switches a limit's visibility off; the panel reflects the change
    immediately and the popup stays open.
-3. The user changes the refresh-cadence choice; the new cadence applies without a
+3. The user changes Usage display from Used to Left; panel values, popup percentages
+   and bars, accessibility, and any visible history trajectory update immediately
+   while recorded usage remains unchanged.
+4. The user changes the refresh-cadence choice; the new cadence applies without a
    restart.
-4. After GNOME Shell restarts, the panel and popup honor the persisted visibility
-   and cadence choices.
+5. After GNOME Shell restarts, the panel and popup honor the persisted visibility,
+   usage-display, and cadence choices.
 
 ## J-004 — See Codex usage
 
