@@ -5,7 +5,8 @@
 The production extension accepts in-process GJS adapters through
 `registerProvider(provider)`. Registration returns an idempotent unregister callback.
 It snapshots presentation metadata and retains only the three lifecycle callbacks;
-the installed package registers the built-in Codex provider through the same slot.
+the installed package registers the built-in Codex and Claude providers through the
+same slot.
 
 | Field | Contract |
 | --- | --- |
@@ -24,9 +25,12 @@ safe epoch milliseconds. Rejections, exceptions, malformed data, missing or extr
 readings, and unavailable results carrying readings all become `unavailable` without
 logging or retaining raw error details.
 
-The surface owns registration, eligibility visibility, one shared refresh cycle, and
-teardown. Adapters own presence detection and provider access. Provider payloads,
-credentials, and errors never cross this presentation contract.
+The surface owns atomic registration, eligibility visibility, one shared refresh
+cycle, and teardown. Every initial or false-to-true eligibility transition requests
+that shared cycle immediately: an idle cadence timer is replaced, while demand during
+an in-flight cycle coalesces into one follow-up. Adapters own presence detection and
+provider access. Provider payloads, credentials, and errors never cross this
+presentation contract.
 
 ## Codex credential and usage boundary
 

@@ -35,6 +35,10 @@ function readText(path) {
 function ids(series) {
     return series.map(item => `${item.providerId}:${item.windowId}`);
 }
+function storedRows(name, key = 'claude:short') {
+    const path = GLib.build_filenamev([root, name, 'history.json']);
+    return JSON.parse(readText(path)).windows[key] ?? [];
+}
 
 const root = GLib.dir_make_tmp('claudex-history-runtime-XXXXXX');
 let clock = 0;
@@ -86,6 +90,48 @@ try {
         assert(!instance.hasSamples(), 'hasSamples false when nothing recorded');
         assert(!Gio.File.new_for_path(GLib.build_filenamev([root, 'malformed', 'history.json']))
             .query_exists(null), 'no file written for empty batches');
+    });
+
+    test('orders distinct refreshes that complete in the same millisecond', () => {
+        clock = 1000;
+        const instance = runtime('same-ms');
+        instance.record([{providerId: 'claude', windowId: 'short', percent: 10}]);
+        instance.record([{providerId: 'claude', windowId: 'short', percent: NaN}]);
+        instance.record([{providerId: 'claude', windowId: 'short', percent: 20}]);
+        equal(storedRows('same-ms'), [[1000, 10], [1001, 20]],
+            'only a successful batch advances the process-local timestamp');
+    });
+
+    test('fails closed when an equal timestamp cannot be incremented safely', () => {
+        clock = Number.MAX_SAFE_INTEGER;
+        const instance = runtime('max-time');
+        instance.record([{providerId: 'claude', windowId: 'short', percent: 10}]);
+        instance.record([{providerId: 'claude', windowId: 'short', percent: 20}]);
+        equal(storedRows('max-time'), [[Number.MAX_SAFE_INTEGER, 10]],
+            'the colliding batch is dropped at the safe-integer boundary');
+    });
+
+    test('does not synthesize backward, invalid, or unsafe clocks', () => {
+        clock = 2000;
+        const backward = runtime('backward-time');
+        backward.record([{providerId: 'claude', windowId: 'short', percent: 10}]);
+        clock = 1999;
+        backward.record([{providerId: 'claude', windowId: 'short', percent: 20}]);
+        equal(storedRows('backward-time'), [[2000, 10]],
+            'backward time remains subject to strict per-window ordering');
+
+        for (const [name, value] of [
+            ['negative-time', -1],
+            ['fractional-time', 1.5],
+            ['infinite-time', Infinity],
+            ['unsafe-time', Number.MAX_SAFE_INTEGER + 1],
+        ]) {
+            clock = value;
+            const invalid = runtime(name);
+            invalid.record([{providerId: 'claude', windowId: 'short', percent: 10}]);
+            assert(!Gio.File.new_for_path(GLib.build_filenamev([root, name, 'history.json']))
+                .query_exists(null), `${name} does not persist`);
+        }
     });
 
     test('validates constructor options', () => {

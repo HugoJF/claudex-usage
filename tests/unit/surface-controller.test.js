@@ -80,7 +80,7 @@ function provider(overrides = {}) {
         }),
         setEligible(value) {
             eligible = value;
-            listener(value);
+            listener?.(value);
         },
         emit(value) {
             listener(value);
@@ -122,6 +122,199 @@ test('provider registration validates immutable presentation metadata and paths'
     unregister();
 });
 
+test('failed provisional registration is inert and releases its provider ID', async () => {
+    const state = harness();
+    let escaped = null;
+    let calls = 0;
+    const invalid = provider({
+        id: 'rollback',
+        isEligible: () => false,
+        subscribeEligibility: callback => {
+            escaped = callback;
+            callback(true);
+            return null;
+        },
+        refresh: async () => {
+            calls += 1;
+            return {status: 'unavailable'};
+        },
+    });
+    assert.throws(() => state.controller.registerProvider(invalid),
+        /unsubscribe callback/);
+    escaped(true);
+    await settle();
+    assert.equal(calls, 0);
+    assert.equal(state.controller.getSnapshot().visible, false);
+    assert.equal(state.timers.size, 0);
+
+    const replacement = provider({id: 'rollback'});
+    state.controller.registerProvider(replacement);
+    await settle();
+    assert.equal(state.controller.getSnapshot().providers[0].id, 'rollback',
+        'a failed transaction releases the provider ID');
+
+    const thrownState = harness();
+    let thrownEscaped = null;
+    const thrown = provider({
+        id: 'thrown',
+        isEligible: () => false,
+        subscribeEligibility: callback => {
+            thrownEscaped = callback;
+            callback(true);
+            throw new Error('subscription detail');
+        },
+    });
+    assert.throws(() => thrownState.controller.registerProvider(thrown),
+        /subscription detail/);
+    thrownEscaped(true);
+    await settle();
+    assert.equal(thrownState.controller.getSnapshot().visible, false);
+    assert.equal(thrownState.timers.size, 0);
+    thrownState.controller.registerProvider(provider({id: 'thrown'}));
+    await settle();
+    assert.equal(thrownState.controller.getSnapshot().providers[0].id, 'thrown');
+});
+
+test('registration survives caught reentrancy and rolls back uncaught reentrancy', async () => {
+    const caught = harness();
+    let nestedError = null;
+    const caughtOuter = provider({
+        id: 'reserved',
+        isEligible: () => {
+            try {
+                caught.controller.registerProvider(provider({id: 'reserved'}));
+            } catch (error) {
+                nestedError = error;
+            }
+            return true;
+        },
+    });
+    caught.controller.registerProvider(caughtOuter);
+    await settle();
+    assert.match(nestedError.message, /already registered/);
+    assert.deepEqual(caught.controller.getSnapshot().providers.map(item => item.id),
+        ['reserved']);
+
+    const uncaught = harness();
+    const uncaughtOuter = provider({
+        id: 'reserved',
+        isEligible: () => uncaught.controller.registerProvider(
+            provider({id: 'reserved'})),
+    });
+    assert.throws(() => uncaught.controller.registerProvider(uncaughtOuter),
+        /already registered/);
+    uncaught.controller.registerProvider(provider({id: 'reserved'}));
+    await settle();
+    assert.deepEqual(uncaught.controller.getSnapshot().providers.map(item => item.id),
+        ['reserved'], 'an uncaught recursive registration leaves no ghost state');
+});
+
+test('an ID getter cannot overwrite a provider committed reentrantly', async () => {
+    const state = harness();
+    let nestedCalls = 0;
+    let outerSubscriptions = 0;
+    const nested = provider({
+        id: 'getter-id',
+        refresh: async () => {
+            nestedCalls += 1;
+            return {status: 'available', readings: [
+                {id: 'short', percent: 25, resetAtMs: 1_120_000},
+            ]};
+        },
+    });
+    const outer = provider({
+        subscribeEligibility: () => {
+            outerSubscriptions += 1;
+            return () => {};
+        },
+    });
+    let firstRead = true;
+    Object.defineProperty(outer, 'id', {
+        get() {
+            if (firstRead) {
+                firstRead = false;
+                state.controller.registerProvider(nested);
+            }
+            return 'getter-id';
+        },
+    });
+    assert.throws(() => state.controller.registerProvider(outer), /already registered/);
+    await settle();
+    assert.equal(nestedCalls, 1);
+    assert.equal(outerSubscriptions, 0);
+    assert.deepEqual(state.controller.getSnapshot().providers.map(item => item.id),
+        ['getter-id']);
+});
+
+test('reentrant disposal stops provisional registration at the current external access', () => {
+    const metadata = harness();
+    const metadataProvider = provider();
+    let detailReads = 0;
+    let subscriptionReads = 0;
+    Object.defineProperty(metadataProvider, 'label', {
+        get() {
+            metadata.controller.dispose();
+            return 'Claude';
+        },
+    });
+    Object.defineProperty(metadataProvider, 'detail', {
+        get() {
+            detailReads += 1;
+            return 'Must not be read';
+        },
+    });
+    Object.defineProperty(metadataProvider, 'subscribeEligibility', {
+        get() {
+            subscriptionReads += 1;
+            return () => () => {};
+        },
+    });
+    assert.throws(() => metadata.controller.registerProvider(metadataProvider),
+        /disposed/);
+    assert.equal(detailReads, 0);
+    assert.equal(subscriptionReads, 0);
+
+    const eligibility = harness();
+    const eligibilityProvider = provider();
+    let subscribeReads = 0;
+    eligibilityProvider.isEligible = () => {
+        eligibility.controller.dispose();
+        return true;
+    };
+    Object.defineProperty(eligibilityProvider, 'subscribeEligibility', {
+        get() {
+            subscribeReads += 1;
+            return () => () => {};
+        },
+    });
+    assert.throws(() => eligibility.controller.registerProvider(eligibilityProvider),
+        /disposed/);
+    assert.equal(subscribeReads, 0);
+});
+
+test('failed subscription cleanup runs once without replacing the primary error', async () => {
+    const state = harness();
+    let cleanupCalls = 0;
+    let escaped = null;
+    const item = provider({
+        subscribeEligibility: callback => {
+            escaped = callback;
+            callback(true);
+            state.controller.dispose();
+            return () => {
+                cleanupCalls += 1;
+                throw new Error('cleanup detail');
+            };
+        },
+    });
+    assert.throws(() => state.controller.registerProvider(item), /disposed/);
+    escaped(true);
+    await settle();
+    assert.equal(cleanupCalls, 1);
+    assert.equal(state.controller.getSnapshot().visible, false);
+    assert.equal(state.timers.size, 0);
+});
+
 test('strict eligibility, ordering, and observer teardown fail closed', async () => {
     const {controller, timers} = harness();
     const zulu = provider({id: 'zulu', order: 1});
@@ -158,6 +351,151 @@ test('first eligible provider refreshes immediately and one timer follows comple
     await settle();
     assert.equal(calls, 2);
     assert.equal(state.timers.size, 1);
+});
+
+test('a provider becoming eligible replaces the cadence timer with one shared refresh', async () => {
+    const state = harness();
+    let claudeCalls = 0;
+    let codexCalls = 0;
+    const claude = provider({refresh: async () => ({
+        status: 'available',
+        readings: [{id: 'short', percent: ++claudeCalls, resetAtMs: 1_120_000}],
+    })});
+    const codex = provider({
+        id: 'codex',
+        order: 1,
+        windows: [{id: 'weekly', label: 'Weekly window', dataRole: 'dataCodexWeekly'}],
+        refresh: async () => ({
+            status: 'available',
+            readings: [{id: 'weekly', percent: ++codexCalls, resetAtMs: 1_180_000}],
+        }),
+    });
+    codex.setEligible(false);
+    state.controller.registerProvider(claude);
+    state.controller.registerProvider(codex);
+    await settle();
+    assert.equal(claudeCalls, 1);
+    assert.equal(codexCalls, 0);
+    assert.equal(state.timers.size, 1);
+
+    codex.setEligible(true);
+    assert.equal(state.timers.size, 0, 'eligibility cancels the cadence timer');
+    await settle();
+    assert.equal(claudeCalls, 2, 'the existing provider joins the shared cycle');
+    assert.equal(codexCalls, 1, 'the newly eligible provider refreshes immediately');
+    assert.equal(state.timers.size, 1);
+
+    codex.emit(true);
+    await settle();
+    assert.deepEqual([claudeCalls, codexCalls], [2, 1],
+        'a repeated eligibility value is a no-op');
+    assert.equal(state.timers.size, 1);
+});
+
+test('eligibility during an in-flight cycle queues one non-overlapping follow-up', async () => {
+    const state = harness();
+    const first = deferred();
+    let claudeCalls = 0;
+    let codexCalls = 0;
+    const claude = provider({refresh: () => {
+        claudeCalls += 1;
+        return claudeCalls === 1 ? first.promise : Promise.resolve({
+            status: 'available',
+            readings: [{id: 'short', percent: 31, resetAtMs: 1_120_000}],
+        });
+    }});
+    const codex = provider({
+        id: 'codex',
+        order: 1,
+        windows: [{id: 'weekly', label: 'Weekly window', dataRole: 'dataCodexWeekly'}],
+        refresh: async () => {
+            codexCalls += 1;
+            return {status: 'available', readings: [
+                {id: 'weekly', percent: 41, resetAtMs: 1_180_000},
+            ]};
+        },
+    });
+    codex.setEligible(false);
+    state.controller.registerProvider(claude);
+    state.controller.registerProvider(codex);
+    await settle();
+    assert.equal(claudeCalls, 1);
+
+    codex.setEligible(true);
+    codex.emit(true);
+    await settle();
+    assert.deepEqual([claudeCalls, codexCalls], [1, 0],
+        'the in-flight cycle is not overlapped');
+    first.resolve({status: 'available', readings: [
+        {id: 'short', percent: 21, resetAtMs: 1_120_000},
+    ]});
+    await settle();
+    assert.deepEqual([claudeCalls, codexCalls], [2, 1],
+        'all eligibility demand coalesces into one follow-up');
+    const refreshingEdges = state.snapshots.map(snapshot => snapshot.refreshing)
+        .filter((value, index, values) => index === 0 || value !== values[index - 1]);
+    assert(refreshingEdges.some((value, index) => value === true &&
+        refreshingEdges[index + 1] === false && refreshingEdges[index + 2] === true),
+    'completion is observable before the queued follow-up starts');
+    assert.equal(state.timers.size, 1);
+});
+
+test('queued demand clears across a zero-provider gap', async () => {
+    const state = harness();
+    const first = deferred();
+    let calls = 0;
+    const item = provider({refresh: () => {
+        calls += 1;
+        return calls === 1 ? first.promise : Promise.resolve({
+            status: 'available',
+            readings: [{id: 'short', percent: 25, resetAtMs: 1_120_000}],
+        });
+    }});
+    const companion = provider({id: 'companion', order: 1});
+    companion.setEligible(false);
+    state.controller.registerProvider(item);
+    state.controller.registerProvider(companion);
+    await settle();
+    companion.setEligible(true);
+    item.setEligible(false);
+    companion.setEligible(false);
+    first.resolve({status: 'available', readings: [
+        {id: 'short', percent: 20, resetAtMs: 1_120_000},
+    ]});
+    await settle();
+    assert.equal(state.controller.getSnapshot().visible, false);
+    assert.equal(state.timers.size, 0);
+
+    item.setEligible(true);
+    await settle();
+    await settle();
+    assert.equal(calls, 2, 'reeligibility starts exactly one new cycle');
+    assert.equal(state.timers.size, 1);
+});
+
+test('eligibility churn and teardown before the adapter microtask prevent access', async () => {
+    for (const transition of ['false', 'invalid', 'unregister', 'dispose']) {
+        const state = harness();
+        let calls = 0;
+        const item = provider({refresh: async () => {
+            calls += 1;
+            return {status: 'available', readings: [
+                {id: 'short', percent: 25, resetAtMs: 1_120_000},
+            ]};
+        }});
+        const unregister = state.controller.registerProvider(item);
+        if (transition === 'false')
+            item.setEligible(false);
+        else if (transition === 'invalid')
+            item.emit('invalid');
+        else if (transition === 'unregister')
+            unregister();
+        else
+            state.controller.dispose();
+        await settle();
+        assert.equal(calls, 0, `${transition} blocks deferred provider access`);
+        assert.equal(state.timers.size, 0);
+    }
 });
 
 test('cadence changes replace one pending timer without forcing an overlapping refresh', async () => {

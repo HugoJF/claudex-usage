@@ -36,12 +36,14 @@ and Node-testable: it validates the provider-slot contract, snapshots presentati
 metadata, coalesces refreshes, and emits presentation models. `extension.js` owns
 `PanelMenu`, GLib timeout ownership, theme changes, actor composition, and teardown.
 
-The installed extension registers one built-in Codex provider through the same
-in-process API used by external adapters. J-002 and J-003 use disposable packages
-whose built-in provider is ineligible under a reserved ID, so their Claude and Codex
-stubs remain isolated; no fixture is present in the canonical ZIP.
+The installed extension registers built-in Codex and Claude providers through the same
+in-process API used by external adapters. J-002 and J-003 use disposable packages whose
+built-in providers are ineligible under reserved IDs, so their Claude and Codex stubs
+remain isolated; no fixture is present in the canonical ZIP.
 One five-minute timer exists only while at least one provider is eligible. A refresh
-starts immediately when the first provider becomes eligible, scheduling begins after
+starts immediately whenever a provider newly becomes eligible: it replaces an idle
+cadence timer or coalesces into one follow-up after an in-flight cycle. Each completion
+is emitted before a queued successor begins, scheduling starts after the final
 completion, and failure or ineligibility clears retained readings before rendering.
 
 `codex-runtime.js` scans numeric `/proc` entries every two seconds for an exact
@@ -66,6 +68,8 @@ directory. When local history is enabled, each completed refresh records one bou
 sample per available provider window, and the popup derives the merged trajectory for the
 selected range from the store — reusing the shipped `HistoryChart`, `RangeSelector`, and
 `Legend`. Recording rides the existing refresh, so nothing samples or writes while no
-provider is present, and nothing recorded leaves the machine. J-006 seeds a store, proves
-the chart, the live sample, the range switch, and the disable path, and reuses the J-005
-Claude endpoint and process-root inputs.
+provider is present, and nothing recorded leaves the machine. Distinct refreshes that
+complete in the same clock millisecond receive adjacent safe millisecond timestamps so
+their ordering survives the store's strict monotonic boundary. J-006 seeds a store,
+proves the chart, ordered live samples, the range switch, and the disable path, and
+reuses the J-005 Claude endpoint and process-root inputs.

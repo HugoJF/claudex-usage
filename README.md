@@ -6,7 +6,7 @@
 
 ![GNOME Shell 50](https://img.shields.io/badge/GNOME%20Shell-50-4a86cf)
 ![GJS](https://img.shields.io/badge/built%20with-GJS-1a5fb4)
-![Status: Codex live](https://img.shields.io/badge/status-Codex%20live-4a86cf)
+![Status: Claude and Codex live](https://img.shields.io/badge/status-Claude%20%2B%20Codex%20live-4a86cf)
 
 <img src="design/captures/usage-dark-100.png" width="440" alt="Claudex Usage popover showing Claude and Codex usage windows, reset times, and usage history">
 
@@ -119,10 +119,10 @@ gnome-extensions uninstall claudex-usage-design@hugo.local
 ```
 
 This installs the static design catalog only. The production extension has UUID
-`claudex-usage@hugo.local` and packages the built-in Codex adapter. It becomes visible
-for an exact current-user process named `codex`, reads `CODEX_HOME/auth.json` (or
-`~/.codex/auth.json`) at refresh time, and otherwise stays absent. Keyring-only login
-and a `CODEX_HOME` not inherited by GNOME Shell are unavailable states.
+`claudex-usage@hugo.local` and packages built-in Codex and Claude adapters. It becomes
+visible for an exact current-user process named `codex` or `claude`, then reads the
+matching existing file-backed CLI/OAuth login at refresh time. Keyring-only Codex
+login and provider config paths not inherited by GNOME Shell are unavailable states.
 
 ## Development
 

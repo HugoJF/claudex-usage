@@ -73,6 +73,7 @@ export async function run() {
     const extension = Main.extensionManager.lookup(UUID)?.stateObj;
     assert(extension, 'production extension is enabled');
     let process = null;
+    let removeCompanion = null;
     try {
         await waitFor(() => !extension.getSurfaceSnapshot().visible,
             'initial absence');
@@ -123,9 +124,40 @@ export async function run() {
             'cancelled refresh settlement');
         assert(!extension.getSurfaceSnapshot().visible,
             'cancelled completion cannot resurrect an absent provider');
+        const companion = {
+            id: 'eligibility-companion',
+            order: 99,
+            label: 'Companion',
+            detail: 'Journey-only eligible provider',
+            marks: {
+                darkPanel: 'icons/codex.svg',
+                lightPanel: 'icons/codex-light.svg',
+                popup: 'icons/codex.svg',
+                accessibleName: 'Journey companion mark',
+            },
+            windows: [{
+                id: 'weekly',
+                label: 'Weekly window',
+                dataRole: 'dataCodexWeekly',
+            }],
+            isEligible: () => true,
+            subscribeEligibility: () => () => {},
+            refresh: async () => ({status: 'available', readings: [{
+                id: 'weekly',
+                percent: 33,
+                resetAtMs: Date.now() + 86400 * 1000,
+            }]}),
+        };
+        removeCompanion = extension.registerProvider(companion);
+        await waitFor(() => extension.getSurfaceSnapshot().providers
+            .some(item => item.id === 'eligibility-companion' &&
+                item.availability === 'available'), 'companion owns the cadence timer');
+        const requestsBeforeReeligibility = state.requests;
         state.short = 61; process = startClaude();
         await waitFor(() => extension.getSurfaceSnapshot().providers[0]
             ?.metrics[0]?.percent === 61, 'reeligible refresh');
+        assert(state.requests === requestsBeforeReeligibility + 1,
+            'Claude eligibility requests usage immediately instead of waiting for cadence');
     } finally {
         if (process)
             stopClaude(process);
@@ -133,6 +165,7 @@ export async function run() {
             reply(state.held);
             server.unpause_message(state.held);
         }
+        removeCompanion?.();
         server.disconnect();
     }
 }

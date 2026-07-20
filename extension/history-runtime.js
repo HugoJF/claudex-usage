@@ -45,12 +45,20 @@ export class HistoryRuntime {
         this._now = options.now ?? (() => Date.now());
         this._path = GLib.build_filenamev([this._dir, FILE_NAME]);
         this._store = this._load();
+        this._lastRecordAtMs = null;
     }
 
     record(samples) {
         if (!Array.isArray(samples) || samples.length === 0)
             return;
-        const atMs = this._now();
+        let atMs = this._now();
+        if (!Number.isSafeInteger(atMs) || atMs < 0)
+            return;
+        if (atMs === this._lastRecordAtMs) {
+            if (atMs === Number.MAX_SAFE_INTEGER)
+                return;
+            atMs += 1;
+        }
         let changed = false;
         for (const sample of samples) {
             if (!sample || typeof sample !== 'object')
@@ -66,8 +74,10 @@ export class HistoryRuntime {
                 changed = true;
             }
         }
-        if (changed)
+        if (changed) {
+            this._lastRecordAtMs = atMs;
             this._persist();
+        }
     }
 
     series(rangeId) {

@@ -64,9 +64,9 @@ function stopClaude(process) {
     directory.delete(null);
 }
 export async function run() {
-    const state = {short: 12, weekly: 37};
+    const state = {short: 12, weekly: 37, hold: false, held: null};
     const server = new Soup.Server();
-    server.add_handler('/usage', (_server, message) => {
+    const reply = message => {
         const iso = offsetMs => new Date(Date.now() + offsetMs).toISOString();
         const body = JSON.stringify({
             five_hour: {utilization: state.short, resets_at: iso(5 * 3600 * 1000)},
@@ -75,6 +75,15 @@ export async function run() {
         message.set_status(Soup.Status.OK, null);
         message.set_response('application/json', Soup.MemoryUse.COPY,
             new TextEncoder().encode(body));
+    };
+    server.add_handler('/usage', (_server, message) => {
+        if (state.hold) {
+            state.hold = false;
+            state.held = message;
+            server.pause_message(message);
+        } else {
+            reply(message);
+        }
     });
     server.listen_local(PORT, Soup.ServerListenOptions.IPV4_ONLY);
     await Scripting.sleep(300);
@@ -84,12 +93,73 @@ export async function run() {
     const seeded = historyWindows()['claude:short']?.length ?? 0;
     assert(seeded > 0, 'harness seeded prior history');
     let process = null;
+    let removeCompanion = null;
     try {
         process = startClaude();
         await waitFor(() => extension.getSurfaceSnapshot().providers[0]
             ?.metrics[0]?.percent === 12, 'live Claude usage');
         await waitFor(() => (historyWindows()['claude:short']?.length ?? 0) > seeded,
             'the completed refresh records a durable sample');
+        const afterInitial = historyWindows()['claude:short'].length;
+        let companionListener = null;
+        let companionEligible = false;
+        const companion = {
+            id: 'history-eligibility-companion',
+            order: 99,
+            label: 'Companion',
+            detail: 'Journey-only eligible provider',
+            marks: {
+                darkPanel: 'icons/codex.svg',
+                lightPanel: 'icons/codex-light.svg',
+                popup: 'icons/codex.svg',
+                accessibleName: 'History journey companion mark',
+            },
+            windows: [{
+                id: 'weekly',
+                label: 'Weekly window',
+                dataRole: 'dataCodexWeekly',
+            }],
+            isEligible: () => companionEligible,
+            subscribeEligibility: callback => {
+                companionListener = callback;
+                return () => companionListener = null;
+            },
+            refresh: async () => ({status: 'available', readings: [{
+                id: 'weekly',
+                percent: 45,
+                resetAtMs: Date.now() + 86400 * 1000,
+            }]}),
+        };
+        removeCompanion = extension.registerProvider(companion);
+        state.short = 24;
+        state.hold = true;
+        extension.refresh();
+        await waitFor(() => state.held !== null, 'first refresh is held');
+        companionEligible = true;
+        companionListener(true);
+        const firstHeld = state.held;
+        state.held = null;
+        state.hold = true;
+        reply(firstHeld);
+        server.unpause_message(firstHeld);
+        await waitFor(() => state.held !== null &&
+            (historyWindows()['claude:short']?.length ?? 0) === afterInitial + 1,
+        'first completion records before the queued refresh settles');
+        let rows = historyWindows()['claude:short'];
+        assert(rows.at(-1)[1] === 24,
+            'the first completion records its exact Claude percentage');
+
+        state.short = 31;
+        const secondHeld = state.held;
+        state.held = null;
+        reply(secondHeld);
+        server.unpause_message(secondHeld);
+        await waitFor(() => (historyWindows()['claude:short']?.length ?? 0) ===
+            afterInitial + 2, 'queued completion records a second sample');
+        rows = historyWindows()['claude:short'];
+        assert(rows.at(-2)[1] === 24 && rows.at(-1)[1] === 31 &&
+            rows.at(-2)[0] < rows.at(-1)[0],
+        'queued refresh samples preserve value and timestamp order');
         const indicator = Main.panel.statusArea[UUID];
         indicator.menu.open();
         await waitFor(() => findActor(indicator.menu.actor, 'history-chart'),
@@ -134,6 +204,11 @@ export async function run() {
     } finally {
         if (process)
             stopClaude(process);
+        if (state.held) {
+            reply(state.held);
+            server.unpause_message(state.held);
+        }
+        removeCompanion?.();
         server.disconnect();
     }
 }

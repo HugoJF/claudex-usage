@@ -33,8 +33,9 @@ Owning Spec: [SPEC-PRIMITIVE-CATALOG](specs/2026-07-16-primitive-catalog.md)
 
 Owning Spec: [SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)
 
-1. While at least one eligible provider is present, the unified panel item shows
-   each eligible provider's mark and enabled percentages at native panel height.
+1. While at least one eligible provider is present, the unified panel item shows each
+   eligible provider's mark and enabled percentages at native panel height; a newly
+   eligible provider's current values appear without waiting for the existing cadence.
 2. The user opens the popup and reviews provider cards: window percentages,
    zero-origin bars, reset times, and the freshness footer with its refresh action.
 3. The user triggers refresh; values and freshness text update without the popup

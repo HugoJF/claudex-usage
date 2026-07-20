@@ -132,3 +132,22 @@ back-filled with an invented value. The store keeps only percent-and-timestamp s
 never a credential, raw response, reset detail, or error — and is local-only: nothing it
 records is transmitted or shared. Visible-gap rendering for unobserved spans would need a
 charting-primitive change and stays out of scope; carry-forward is the accepted default.
+
+## 2026-07-19 — Refresh every newly eligible provider through the shared cycle
+
+Every initial or false-to-true provider eligibility transition requests current values
+immediately. If the cadence timer is idle, the transition replaces it; if a cycle is
+already in flight, any number of transitions coalesce into one follow-up after the
+current completion is emitted. A full shared cycle is retained instead of introducing
+per-provider polling, so providers keep one lifecycle and one freshness timestamp.
+
+Provider registration is atomic across presentation reads, initial eligibility, and
+subscription. Reentrant failure leaves no registered provider or scheduled work, and a
+provider that becomes ineligible before its deferred call is never accessed. Opaque
+generation identities guard late work without a numeric exhaustion boundary.
+
+Back-to-back shared cycles can complete within the same clock millisecond while carrying
+different values. The history runtime therefore stores the later successful batch at
+the next safe millisecond only when the observed clock is equal; backward and invalid
+clocks still fail closed. If an equal timestamp is already the maximum safe integer,
+the colliding history batch is dropped while live presentation remains available.

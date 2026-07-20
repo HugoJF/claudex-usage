@@ -11,6 +11,7 @@ retains bounded per-provider-window `{atMs, percent}` samples within a 30-day re
 window; older samples and any beyond the per-window cap are dropped. A durable JSON file
 under the user data directory persists the serialized store, and a `show-usage-history`
 boolean and a `history-range` enum join the GSettings schema. The store holds only
-percent-and-timestamp
-samples — never a credential, raw response, reset detail, or error — and nothing it
-records leaves the machine.
+percent-and-timestamp samples — never a credential, raw response, reset detail, or
+error — and nothing it records leaves the machine. Two successful refreshes observed at
+the same safe clock millisecond are stored one millisecond apart to retain event order;
+backward, invalid, or exhausted timestamps remain fail-closed.

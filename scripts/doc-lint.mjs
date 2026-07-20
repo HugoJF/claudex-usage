@@ -10,20 +10,26 @@
 //   - relative markdown links resolve on disk (anchors ignored)
 //   - configured legacy checkout links remap to this checkout; other absolute links fail
 //   - retired vocabulary (docs/.retired-terms) does not reappear in evergreen docs
+// Optional `--status` additionally prints the canonical pitch -> brief -> Spec ->
+// slice tree derived from `parent_ids` and literal build-slice checkboxes.
 // Exit 1 on any violation.
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { resolve, dirname, join, isAbsolute } from "node:path";
 
 const REQUIRED_KEYS = {
+  pitch: ["id", "type", "status", "owner", "created", "updated"],
   spec: ["id", "type", "status", "owner", "created", "updated"],
   "product-brief": ["id", "type", "status", "owner", "created", "updated"],
   "decision-record": ["id", "type", "status", "created"],
+  "engineering-decision": ["id", "type", "created", "spec_ids", "supersedes"],
 };
 
 const violations = [];
 const warnings = [];
 const legacyCheckoutMappings = [];
+const documentRecords = [];
+const derivedAuthorityRoots = new Set();
 
 // Retired vocabulary: phrases a concept migration retired, listed by a project in
 // `<docs>/.retired-terms` (one `pattern :: reason` per line, `#` comments). Once a term
@@ -119,6 +125,17 @@ function operationalEvidenceBody(text) {
   return nextHeading ? rest.slice(0, nextHeading.index) : rest;
 }
 
+function levelTwoSectionBody(text, sectionName) {
+  const heading = new RegExp(`^## ${sectionName}\\s*$`, "m").exec(text);
+  if (!heading) {
+    return "";
+  }
+  const start = heading.index + heading[0].length;
+  const rest = text.slice(start);
+  const nextHeading = /^#{1,2} +/m.exec(rest);
+  return nextHeading ? rest.slice(0, nextHeading.index) : rest;
+}
+
 function isMeaningfulOperationalEvidence(body) {
   if (body === null) {
     return false;
@@ -146,27 +163,88 @@ function loadDocLintConfig(configFile, projectRoot) {
     violations.push(`${configFile}: config must be a JSON object`);
     return;
   }
-  if (!("legacyCheckoutRoots" in config)) {
-    return;
-  }
-  if (!Array.isArray(config.legacyCheckoutRoots)) {
-    violations.push(`${configFile}: 'legacyCheckoutRoots' must be an array`);
-    return;
-  }
-  for (const root of config.legacyCheckoutRoots) {
-    if (typeof root !== "string" || root === "" || !isAbsolute(root)) {
-      violations.push(`${configFile}: every legacy checkout root must be a non-empty absolute path`);
-      continue;
+  if ("legacyCheckoutRoots" in config) {
+    if (!Array.isArray(config.legacyCheckoutRoots)) {
+      violations.push(`${configFile}: 'legacyCheckoutRoots' must be an array`);
+    } else {
+      for (const root of config.legacyCheckoutRoots) {
+        if (typeof root !== "string" || root === "" || !isAbsolute(root)) {
+          violations.push(
+            `${configFile}: every legacy checkout root must be a non-empty absolute path`,
+          );
+          continue;
+        }
+        const withSlash = root.endsWith("/") ? root : `${root}/`;
+        legacyCheckoutMappings.push({
+          legacyRoot: withSlash,
+          projectRoot,
+          configFile,
+          remapCount: 0,
+          sampleFile: null,
+          sampleTarget: null,
+        });
+      }
     }
-    const withSlash = root.endsWith("/") ? root : `${root}/`;
-    legacyCheckoutMappings.push({
-      legacyRoot: withSlash,
-      projectRoot,
-      configFile,
-      remapCount: 0,
-      sampleFile: null,
-      sampleTarget: null,
-    });
+  }
+  if ("documentAuthority" in config) {
+    if (config.documentAuthority !== "derived-v1") {
+      violations.push(
+        `${configFile}: unsupported 'documentAuthority' value '${config.documentAuthority}' (expected 'derived-v1')`,
+      );
+    } else {
+      derivedAuthorityRoots.add(resolve(projectRoot));
+    }
+  }
+}
+
+function derivedProjectRoot(file) {
+  const resolved = resolve(file);
+  return [...derivedAuthorityRoots].find(
+    (root) => resolved === root || resolved.startsWith(`${root}/`),
+  );
+}
+
+function lintDerivedAuthority(file, text, data) {
+  const projectRoot = derivedProjectRoot(file);
+  if (!projectRoot) {
+    return;
+  }
+  const relative = file.slice(projectRoot.length + 1).replaceAll("\\", "/");
+  if (["pitch", "product-brief", "spec"].includes(data?.type) && "child_docs" in data) {
+    violations.push(
+      `${file}: 'child_docs' is forbidden by documentAuthority 'derived-v1'; parent_ids is canonical`,
+    );
+  }
+  if (relative === "docs/product/README.md") {
+    for (const match of text.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+      const target = match[1].split("#")[0];
+      if (/(^|\/)(briefs|specs)\/[^/]+\.md$/i.test(target)) {
+        violations.push(
+          `${file}: derived product navigation must not catalog individual briefs or specs -> ${match[1]}`,
+        );
+      }
+    }
+  }
+  if (relative === "docs/product/feature-horizon.md") {
+    if (/^- \[[ xX]\] /m.test(text)) {
+      violations.push(`${file}: feature horizon must not carry delivery checkboxes`);
+    }
+    if (/\b[A-Z][A-Z0-9]{1,10}-\d{3}\b/.test(text)) {
+      violations.push(`${file}: feature horizon must not duplicate Spec or slice IDs`);
+    }
+    if (/\|\s*status\s*\|/i.test(text)) {
+      violations.push(
+        `${file}: feature horizon tracks priority/release stage, not document or delivery status`,
+      );
+    }
+  }
+  if (
+    relative === "docs/engineering/decision-log.md" &&
+    !text.includes("<!-- aura:legacy-decision-log -->")
+  ) {
+    violations.push(
+      `${file}: derived-v1 treats decision-log.md as a frozen legacy archive; add the legacy marker after migration or move new decisions into docs/engineering/decisions/`,
+    );
   }
 }
 
@@ -199,6 +277,13 @@ function lintFile(file, mdByBasename) {
   if (fm) {
     const { data } = fm;
     const type = typeof data.type === "string" ? data.type : undefined;
+    const title = /^# +(.+)$/m.exec(text)?.[1]?.trim() ?? data.id ?? file;
+    const buildSlices = levelTwoSectionBody(text, "Build Slices");
+    const slices = [...buildSlices.matchAll(/^- \[([ xX])\]\s+(.+)$/gm)].map((match) => ({
+      done: match[1].toLowerCase() === "x",
+      text: match[2].trim(),
+    }));
+    documentRecords.push({ file, data, title, slices });
 
     if (type && REQUIRED_KEYS[type]) {
       for (const key of REQUIRED_KEYS[type]) {
@@ -238,7 +323,7 @@ function lintFile(file, mdByBasename) {
         typeof data.created === "string" && data.created >= SPEC_BUDGET_ENFORCED_FROM;
       if (bodyLines > SPEC_BUDGET_FAIL && enforced) {
         violations.push(
-          `${file}: spec body is ${bodyLines} lines, over the ${SPEC_BUDGET_FAIL}-line ceiling (budget ~${SPEC_BUDGET_WARN}); mechanism likely leaked in (→ decision log) or a contract got restated (→ link it)`,
+          `${file}: spec body is ${bodyLines} lines, over the ${SPEC_BUDGET_FAIL}-line ceiling (budget ~${SPEC_BUDGET_WARN}); mechanism likely leaked in (→ engineering decision) or a contract got restated (→ link it)`,
         );
       } else if (bodyLines > SPEC_BUDGET_WARN) {
         const tail = enforced
@@ -250,6 +335,8 @@ function lintFile(file, mdByBasename) {
       }
     }
   }
+
+  lintDerivedAuthority(file, text, fm?.data);
 
   // §"Section" references: `some-doc.md` §"Heading Name" must name a real heading in
   // that doc — this is how a section rename in a shared doc breaks its inbound
@@ -278,9 +365,15 @@ function lintFile(file, mdByBasename) {
   }
 
   // Retired vocabulary: a listed phrase must not reappear in an evergreen doc.
-  // `decision-log.md` is append-only history (exempt); a single line opts out with a
-  // trailing `<!-- retired-ok -->` (for a legitimate "X replaces Y" mention).
-  if (retiredTerms.length > 0 && file.endsWith(".md") && !file.endsWith("decision-log.md")) {
+  // Immutable engineering decisions and a frozen legacy `decision-log.md` are history
+  // (exempt); a single evergreen line can opt out with trailing `<!-- retired-ok -->`
+  // for a legitimate "X replaces Y" mention.
+  if (
+    retiredTerms.length > 0 &&
+    file.endsWith(".md") &&
+    !file.endsWith("decision-log.md") &&
+    fm?.data?.type !== "engineering-decision"
+  ) {
     const lines = text.split("\n");
     for (let i = 0; i < lines.length; i += 1) {
       const line = lines[i];
@@ -315,9 +408,253 @@ function lintFile(file, mdByBasename) {
   }
 }
 
-const dirs = process.argv.slice(2);
+function listValue(data, key, file) {
+  const value = data[key];
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    violations.push(`${file}: '${key}' must be a frontmatter list`);
+    return [];
+  }
+  return value;
+}
+
+function renderStatusTree({ print = true } = {}) {
+  const records = documentRecords.filter((record) =>
+    ["pitch", "product-brief", "spec"].includes(record.data.type),
+  );
+  const byId = new Map();
+  for (const record of records) {
+    const id = record.data.id;
+    if (typeof id !== "string" || id === "") {
+      violations.push(`${record.file}: status graph document requires a non-empty 'id'`);
+      continue;
+    }
+    if (byId.has(id)) {
+      violations.push(`${record.file}: duplicate document id '${id}' (also ${byId.get(id).file})`);
+      continue;
+    }
+    byId.set(id, record);
+    if ("child_docs" in record.data && !derivedProjectRoot(record.file)) {
+      warnings.push(
+        `${record.file}: legacy 'child_docs' is deprecated and ignored; parent_ids is canonical`,
+      );
+    }
+  }
+
+  const pitches = records.filter((record) => record.data.type === "pitch");
+  if (pitches.length !== 1) {
+    violations.push(`status graph requires exactly one pitch, found ${pitches.length}`);
+  }
+
+  const parentById = new Map();
+  const childrenById = new Map();
+  const unlinked = new Set();
+  for (const record of records) {
+    const id = record.data.id;
+    if (typeof id !== "string" || !byId.has(id)) {
+      continue;
+    }
+    const parents = listValue(record.data, "parent_ids", record.file);
+    if (derivedProjectRoot(record.file) && !("parent_ids" in record.data)) {
+      violations.push(
+        `${record.file}: documentAuthority 'derived-v1' requires a 'parent_ids' list`,
+      );
+    }
+    if (record.data.type === "pitch") {
+      if (parents.length > 0) {
+        violations.push(`${record.file}: pitch must not declare parent_ids`);
+        unlinked.add(id);
+      }
+      continue;
+    }
+    const expectedParentType = record.data.type === "product-brief" ? "pitch" : "product-brief";
+    if (parents.length !== 1) {
+      violations.push(
+        `${record.file}: ${record.data.type} requires exactly one ${expectedParentType} parent_id`,
+      );
+      unlinked.add(id);
+      continue;
+    }
+    const parentId = parents[0];
+    const parent = byId.get(parentId);
+    if (!parent) {
+      violations.push(`${record.file}: parent_id '${parentId}' does not resolve`);
+      unlinked.add(id);
+      continue;
+    }
+    if (parent.data.type !== expectedParentType) {
+      violations.push(
+        `${record.file}: parent_id '${parentId}' has type '${parent.data.type}', expected '${expectedParentType}'`,
+      );
+      unlinked.add(id);
+      continue;
+    }
+    parentById.set(id, parentId);
+    childrenById.set(parentId, [...(childrenById.get(parentId) ?? []), id]);
+  }
+
+  const visiting = new Set();
+  const visited = new Set();
+  function visit(id, path = []) {
+    if (visiting.has(id)) {
+      violations.push(`status graph contains a cycle: ${[...path, id].join(" -> ")}`);
+      unlinked.add(id);
+      return;
+    }
+    if (visited.has(id)) {
+      return;
+    }
+    visiting.add(id);
+    const parentId = parentById.get(id);
+    if (parentId) {
+      visit(parentId, [...path, id]);
+    }
+    visiting.delete(id);
+    visited.add(id);
+  }
+  for (const id of byId.keys()) {
+    visit(id);
+  }
+
+  const lines = ["Document Status"];
+  const sortIds = (ids) => [...ids].sort((a, b) => a.localeCompare(b));
+  const rendered = new Set();
+  function render(id, depth) {
+    if (rendered.has(id)) {
+      return;
+    }
+    const record = byId.get(id);
+    if (!record) {
+      return;
+    }
+    rendered.add(id);
+    const indent = "  ".repeat(depth);
+    const status = typeof record.data.status === "string" ? record.data.status : "unknown";
+    const progress =
+      record.data.type === "spec" && record.slices.length > 0
+        ? ` (${record.slices.filter((slice) => slice.done).length}/${record.slices.length})`
+        : "";
+    lines.push(`${indent}${id} [${status}]${progress} — ${record.title}`);
+    if (record.data.type === "spec") {
+      for (const slice of record.slices) {
+        lines.push(`${indent}  [${slice.done ? "x" : " "}] ${slice.text}`);
+      }
+    }
+    for (const childId of sortIds(childrenById.get(id) ?? [])) {
+      render(childId, depth + 1);
+    }
+  }
+
+  for (const pitch of sortIds(pitches.map((record) => record.data.id))) {
+    render(pitch, 0);
+  }
+  for (const id of byId.keys()) {
+    if (!rendered.has(id)) {
+      unlinked.add(id);
+    }
+  }
+  if (unlinked.size > 0) {
+    lines.push("Unlinked");
+    for (const id of sortIds(unlinked)) {
+      render(id, 1);
+    }
+  }
+  if (print) {
+    console.log(lines.join("\n"));
+  }
+}
+
+function validateDecisionRecords() {
+  const records = documentRecords.filter(
+    (record) => record.data.type === "engineering-decision",
+  );
+  const byId = new Map();
+  for (const record of records) {
+    const id = record.data.id;
+    if (typeof id !== "string" || id === "") {
+      violations.push(`${record.file}: engineering decision requires a non-empty 'id'`);
+      continue;
+    }
+    if (byId.has(id)) {
+      violations.push(
+        `${record.file}: duplicate engineering decision id '${id}' (also ${byId.get(id).file})`,
+      );
+      continue;
+    }
+    byId.set(id, record);
+  }
+
+  const supersedesById = new Map();
+  const superseded = new Set();
+  for (const [id, record] of byId) {
+    const targets = listValue(record.data, "supersedes", record.file);
+    supersedesById.set(id, targets);
+    for (const targetId of targets) {
+      if (targetId === id) {
+        violations.push(`${record.file}: engineering decision cannot supersede itself`);
+        continue;
+      }
+      if (!byId.has(targetId)) {
+        violations.push(`${record.file}: supersedes id '${targetId}' does not resolve`);
+        continue;
+      }
+      superseded.add(targetId);
+    }
+  }
+
+  const visiting = new Set();
+  const visited = new Set();
+  function visit(id, path = []) {
+    if (visiting.has(id)) {
+      violations.push(`engineering decision supersedes graph contains a cycle: ${[...path, id].join(" -> ")}`);
+      return;
+    }
+    if (visited.has(id)) {
+      return;
+    }
+    visiting.add(id);
+    for (const targetId of supersedesById.get(id) ?? []) {
+      if (byId.has(targetId)) {
+        visit(targetId, [...path, id]);
+      }
+    }
+    visiting.delete(id);
+    visited.add(id);
+  }
+  for (const id of byId.keys()) {
+    visit(id);
+  }
+
+  const activeTitles = new Map();
+  for (const [id, record] of byId) {
+    if (superseded.has(id)) {
+      continue;
+    }
+    const normalized = record.title
+      .replace(/^Decision:\s*/i, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+    if (normalized === "") {
+      continue;
+    }
+    if (activeTitles.has(normalized)) {
+      violations.push(
+        `${record.file}: duplicate active engineering decision title '${record.title}' (also ${activeTitles.get(normalized).file}); supersede the earlier record explicitly`,
+      );
+    } else {
+      activeTitles.set(normalized, record);
+    }
+  }
+}
+
+const args = process.argv.slice(2);
+const statusMode = args.includes("--status");
+const dirs = args.filter((arg) => arg !== "--status");
 if (dirs.length === 0) {
-  console.error("usage: doc-lint.mjs <docs-dir> [<docs-dir>...]");
+  console.error("usage: doc-lint.mjs [--status] <docs-dir> [<docs-dir>...]");
   process.exit(2);
 }
 
@@ -366,6 +703,11 @@ for (const file of allFiles) {
   fileCount += 1;
   lintFile(file, mdByBasename);
 }
+
+if (statusMode || derivedAuthorityRoots.size > 0) {
+  renderStatusTree({ print: statusMode });
+}
+validateDecisionRecords();
 
 for (const mapping of legacyCheckoutMappings) {
   if (mapping.remapCount > 0) {

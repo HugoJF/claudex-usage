@@ -72,13 +72,25 @@ function captureDirectory() {
     return repo.get_child('design').get_child('captures');
 }
 
-async function captureActor(actor, filename, padding = 8) {
+async function captureActor(target, filename, padding = 8) {
+    let actor = null;
+    let actorWidth = 0;
+    let actorHeight = 0;
+    for (let attempt = 0; attempt < 40; attempt++) {
+        actor = typeof target === 'function' ? target() : target;
+        if (actor?.is_mapped())
+            [actorWidth, actorHeight] = actor.get_transformed_size();
+        if (actorWidth > 0 && actorHeight > 0)
+            break;
+        await Scripting.sleep(50);
+    }
     assert(actor?.is_mapped(), `${filename} actor is not mapped`);
+    assert(actorWidth > 0 && actorHeight > 0,
+        `${filename} actor has no allocated geometry`);
     const directory = captureDirectory();
     if (!directory.query_exists(null))
         directory.make_directory_with_parents(null);
     const [actorX, actorY] = actor.get_transformed_position();
-    const [actorWidth, actorHeight] = actor.get_transformed_size();
     const x = Math.max(0, Math.floor(actorX - padding));
     const y = Math.max(0, Math.floor(actorY - padding));
     const width = Math.min(global.screen_width - x, Math.ceil(actorWidth + padding * 2));
@@ -141,6 +153,7 @@ export async function run() {
     let claudePercent = 8;
     let claudeReset = Date.now() + 3 * 60 * 60 * 1000 + 50 * 60 * 1000;
     let claudeDeferred = null;
+    let claudeCalls = 0;
     const claude = usageProvider({
         id: 'claude',
         order: 0,
@@ -148,27 +161,43 @@ export async function run() {
         detail: '5-hour usage window',
         window: {id: 'short', label: '5-hour window', dataRole: 'dataClaudeShort'},
         reading: () => ({id: 'short', percent: claudePercent, resetAtMs: claudeReset}),
-        refresh: () => claudeDeferred?.promise ?? Promise.resolve({
-            status: 'available',
-            readings: [{id: 'short', percent: claudePercent, resetAtMs: claudeReset}],
-        }),
+        refresh: () => {
+            claudeCalls++;
+            return claudeDeferred?.promise ?? Promise.resolve({
+                status: 'available',
+                readings: [{id: 'short', percent: claudePercent, resetAtMs: claudeReset}],
+            });
+        },
     });
+    claude.setEligible(false);
     let codexUnavailable = false;
+    let codexPercent = 41;
+    let codexCalls = 0;
     const codex = usageProvider({
         id: 'codex',
         order: 1,
         label: 'Codex',
         detail: 'Weekly usage window',
         window: {id: 'weekly', label: 'Weekly window', dataRole: 'dataCodexWeekly'},
-        reading: () => ({id: 'weekly', percent: 42, resetAtMs: Date.now() + 4 * 86400000}),
-        refresh: () => codexUnavailable
-            ? Promise.reject(new Error('provider response deliberately hidden'))
-            : Promise.resolve({status: 'available', readings: [{
-                id: 'weekly', percent: 42, resetAtMs: Date.now() + 4 * 86400000,
-            }]}),
+        reading: () => ({id: 'weekly', percent: codexPercent,
+            resetAtMs: Date.now() + 4 * 86400000}),
+        refresh: () => {
+            codexCalls++;
+            return codexUnavailable
+                ? Promise.reject(new Error('provider response deliberately hidden'))
+                : Promise.resolve({status: 'available', readings: [{
+                    id: 'weekly', percent: codexPercent,
+                    resetAtMs: Date.now() + 4 * 86400000,
+                }]});
+        },
     });
     const removeClaude = extension.registerProvider(claude);
     const removeCodex = extension.registerProvider(codex);
+    await settle();
+    assert(codexCalls === 1 && claudeCalls === 0,
+        'the initially eligible provider settles before Claude appears');
+    codexPercent = 42;
+    claude.setEligible(true);
     await settle();
 
     let indicator = Main.panel.statusArea[UUID];
@@ -176,6 +205,9 @@ export async function run() {
     const snapshot = extension.getSurfaceSnapshot();
     assert(snapshot.providers.length === 2 && snapshot.providers.every(item =>
         item.availability === 'available'), 'both provider results settle independently');
+    assert(claudeCalls === 1 && codexCalls === 2 &&
+        snapshot.providers.find(item => item.id === 'codex')?.metrics[0]?.percent === 42,
+    'new Claude eligibility immediately runs one full shared refresh cycle');
     const panel = findActor(indicator, 'claudex-live-panel');
     assert(panel.height <= Main.panel.height, 'unified panel stays at native height');
     assert(collectLabelText(panel).join(' ').includes('8%') &&
@@ -249,7 +281,8 @@ export async function run() {
     const originalScale = themeContext.scale_factor;
     themeContext.set_scale_factor(2);
     await settle();
-    await captureActor(findActor(Main.panel.statusArea[UUID], 'claudex-live-panel'),
+    await captureActor(
+        () => findActor(Main.panel.statusArea[UUID], 'claudex-live-panel'),
         EXPECTED_CAPTURES[5], 6);
     themeContext.set_scale_factor(originalScale);
     await settle();

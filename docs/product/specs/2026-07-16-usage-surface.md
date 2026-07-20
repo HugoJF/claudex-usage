@@ -4,7 +4,7 @@ type: spec
 status: done
 owner: hugo
 created: 2026-07-16
-updated: 2026-07-17
+updated: 2026-07-19
 source_docs:
   - docs/product/briefs/2026-07-16-live-usage.md
   - design/direction-lab/DIRECTION-BRIEF.md
@@ -35,8 +35,9 @@ Intent: see current usage windows and reset times while an agent is in use.
 Acceptance:
 
 - **J-002.1** The panel item exists only while at least one registered provider
-  reports eligible, and composes provider marks with enabled percentages at native
-  panel height.
+  reports eligible, composes provider marks with enabled percentages at native panel
+  height, and shows each newly eligible provider's current values without waiting for
+  an existing refresh cadence.
 - **J-002.2** The popup groups metrics by provider; each visible window shows its
   percentage, zero-origin bar, and reset time from provider-supplied data.
 - **J-002.3** The refresh action requests fresh values and updates the freshness
@@ -134,6 +135,10 @@ its build slice.
   and capture evidence.
 - [x] `SURF-003` — settings view with persisted visibility and cadence, J-003
   journey test, capture evidence for the new production states.
+- [x] `SURF-004` — make every new provider-eligibility transition show current values
+  immediately through the shared refresh cycle, with atomic registration and ordered
+  local-history completion evidence. Medium: one lifecycle/concurrency invariant, at
+  most 15 edited files and 800 handwritten lines.
 
 ## Non-Scope
 
