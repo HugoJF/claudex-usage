@@ -177,6 +177,27 @@ function rangeSelectPreview({range, variant, onActivate, tokens}) {
     return actor;
 }
 
+function refinementVariantSelector({selected, onSelect}) {
+    const actor = box('selected-history-header',
+        Clutter.Orientation.HORIZONTAL, {
+            name: 'refinement-variant-selector',
+            x_expand: true,
+        });
+    actor.add_child(label('Preview', 'selected-section-title', {
+        x_expand: true,
+    }));
+    actor.add_child(RangeSelector({
+        choices: ['a', 'b', 'c'].map(id => ({
+            id,
+            label: id.toUpperCase(),
+            accessibleName: `Preview variant ${id.toUpperCase()}`,
+        })),
+        selected,
+        onSelect,
+    }));
+    return actor;
+}
+
 function statusOnlyFooter(text) {
     const actor = box('claudex-footer', Clutter.Orientation.HORIZONTAL, {
         name: 'refinement-footer',
@@ -291,7 +312,8 @@ function statusRefreshButton({onActivate, tokens}) {
     return actor;
 }
 
-function buildRefinementUsagePopover({state, extensionPath, tokens, actions}) {
+function buildRefinementUsagePopover({state, extensionPath, tokens, actions,
+    showPreviewControls}) {
     const variant = state.refinementVariant;
     const header = box('selected-header', Clutter.Orientation.HORIZONTAL, {
         x_expand: true,
@@ -378,8 +400,14 @@ function buildRefinementUsagePopover({state, extensionPath, tokens, actions}) {
         tokens,
     }));
 
-    const children = [
-        header,
+    const children = [header];
+    if (showPreviewControls) {
+        children.push(refinementVariantSelector({
+            selected: variant,
+            onSelect: actions.selectRefinementVariant,
+        }));
+    }
+    children.push(
         refinementProviderCard({
             id: 'claude',
             title: 'Claude',
@@ -399,7 +427,7 @@ function buildRefinementUsagePopover({state, extensionPath, tokens, actions}) {
             tokens,
         }),
         history,
-    ];
+    );
     if (variant !== 'c')
         children.push(statusOnlyFooter('Updated 3 min ago'));
     return PopoverScaffold({
@@ -409,7 +437,8 @@ function buildRefinementUsagePopover({state, extensionPath, tokens, actions}) {
     });
 }
 
-function buildRefinementSettingsPopover({state, tokens, actions}) {
+function buildRefinementSettingsPopover({state, tokens, actions,
+    showPreviewControls}) {
     const header = box('selected-settings-header',
         Clutter.Orientation.HORIZONTAL, {x_expand: true});
     const back = new St.Button({
@@ -484,10 +513,19 @@ function buildRefinementSettingsPopover({state, tokens, actions}) {
         onActivate: actions.cycleRefreshInterval,
     }));
 
+    const children = [header];
+    if (showPreviewControls) {
+        children.push(refinementVariantSelector({
+            selected: state.refinementVariant,
+            onSelect: actions.selectRefinementVariant,
+        }));
+    }
+    children.push(panelSection, displaySection, historySection, updatesSection);
+
     return PopoverScaffold({
         id: 'usage-refinement-settings',
         view: 'settings',
-        children: [header, panelSection, displaySection, historySection, updatesSection],
+        children,
     });
 }
 
@@ -721,6 +759,7 @@ export default class ClaudexUsageCatalogExtension extends Extension {
         this._tokens = loadTokens(this.path);
         this._state = new CatalogState();
         this._panelSignature = null;
+        this._showRefinementControls = false;
         this._colorSchemeChangedId = St.Settings.get().connect(
             'notify::color-scheme', () => this._render());
 
@@ -739,6 +778,23 @@ export default class ClaudexUsageCatalogExtension extends Extension {
         this._popoverHost = new St.Bin({name: 'claudex-popover-host'});
         this._menuItem.add_child(this._popoverHost);
         this._indicator.menu.addMenuItem(this._menuItem);
+        this._menuKeyPressId = this._indicator.menu.actor.connect(
+            'key-press-event', (_actor, event) => {
+                if (!this._showRefinementControls)
+                    return Clutter.EVENT_PROPAGATE;
+                const variant = new Map([
+                    [Clutter.KEY_1, 'a'],
+                    [Clutter.KEY_KP_1, 'a'],
+                    [Clutter.KEY_2, 'b'],
+                    [Clutter.KEY_KP_2, 'b'],
+                    [Clutter.KEY_3, 'c'],
+                    [Clutter.KEY_KP_3, 'c'],
+                ]).get(event.get_key_symbol());
+                if (!variant)
+                    return Clutter.EVENT_PROPAGATE;
+                this.showRefinementVariant(variant);
+                return Clutter.EVENT_STOP;
+            });
 
         Main.panel.addToStatusArea(this.uuid, this._indicator, 0, 'right');
         this._render();
@@ -755,6 +811,8 @@ export default class ClaudexUsageCatalogExtension extends Extension {
         this._popoverHost = null;
         this._menuItem = null;
         this._panelSignature = null;
+        this._menuKeyPressId = null;
+        this._showRefinementControls = false;
         this._state = null;
         this._tokens = null;
     }
@@ -773,6 +831,13 @@ export default class ClaudexUsageCatalogExtension extends Extension {
 
     showRefinementVariant(variant) {
         this._state.setRefinementVariant(variant);
+        this._render();
+    }
+
+    showRefinementControls() {
+        this._showRefinementControls = true;
+        if (!this._state.snapshot().refinementVariant)
+            this._state.setRefinementVariant('a');
         this._render();
     }
 
@@ -838,6 +903,10 @@ export default class ClaudexUsageCatalogExtension extends Extension {
                 this._state.cycleRange();
                 this._render();
             },
+            selectRefinementVariant: variant => {
+                this._state.setRefinementVariant(variant);
+                this._render();
+            },
             toggle: key => {
                 this._state.toggle(key);
                 this._render();
@@ -856,12 +925,14 @@ export default class ClaudexUsageCatalogExtension extends Extension {
                     state: snapshot,
                     tokens: this._tokens,
                     actions,
+                    showPreviewControls: this._showRefinementControls,
                 })
                 : buildRefinementUsagePopover({
                     state: snapshot,
                     extensionPath: this.path,
                     tokens: this._tokens,
                     actions,
+                    showPreviewControls: this._showRefinementControls,
                 });
         } else {
             popover = snapshot.view === 'settings'

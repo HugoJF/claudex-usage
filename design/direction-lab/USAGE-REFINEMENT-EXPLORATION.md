@@ -17,10 +17,11 @@ contains no provider access, polling, or production persistence.
 
 ## Variant A — Quiet Utility
 
-The recommended composition keeps the popup visually quiet: two flat header icons,
-an abbreviated range select, provider names without subtitles, a thin unlabeled
-marker crossing each bar, and freshness as footer metadata. The compact panel mutes
-only Claude's first percentage while stable order and accessibility name the window.
+The owner-confirmed composition keeps the popup visually quiet: two flat header
+icons, an abbreviated range select, provider names without subtitles, a thin
+unlabeled marker crossing each bar, and freshness as footer metadata. The compact
+panel mutes only Claude's first percentage while stable order and accessibility name
+the window.
 
 Refresh feedback swaps the circular-arrow icon to its busy state without adding
 completion animation or moving text. Settings expose **Time pace markers** as one
@@ -68,4 +69,4 @@ No new token is proposed: existing muted foreground, separator, focus, spacing,
 radius, and type roles cover all three variants.
 
 **CANONICAL: variant A — Quiet Utility keeps every requested signal visible with the
-least repeated copy and no new token role.**
+least repeated copy and no new token role. Owner confirmed 2026-07-19.**

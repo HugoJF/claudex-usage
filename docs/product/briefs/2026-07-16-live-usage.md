@@ -107,8 +107,8 @@ capability:
 ## Decision
 
 Accepted by the owner. The unified indicator model and provider boundaries remain
-fixed; the compact-control, time-pace, and feedback refinements were confirmed on
-2026-07-19.
+fixed; variant A — Quiet Utility is the confirmed canonical composition for the
+compact-control, time-pace, and feedback refinements as of 2026-07-19.
 
 ## Next Step
 
