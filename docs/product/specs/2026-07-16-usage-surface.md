@@ -59,8 +59,8 @@ Acceptance:
 - **J-003.4** A global Time pace setting defaults on and removes or restores every
   marker immediately without a provider refresh.
 - **J-003.5** A weekly-pace schedule defaults to Every day; choosing Weekdays updates
-  weekly markers immediately, excludes local Saturdays and Sundays, and leaves
-  shorter rolling-window markers unchanged.
+  weekly markers immediately by excluding local weekend hours between the provider
+  window's start and reset, and leaves shorter rolling-window markers unchanged.
 - **J-003.6** The refresh-cadence row presents a fixed enumerated choice set and
   applies the selection without restart.
 - **J-003.7** Visibility, usage-display, Time pace, weekly-pace schedule, and cadence

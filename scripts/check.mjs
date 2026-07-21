@@ -96,7 +96,7 @@ function validateLegacySettingsSeed(source) {
         !source.includes('[org/gnome/shell/extensions/claudex-usage]') ||
         requiredKeys.some(key => !source.includes(`\n${key}=`)))
         throw new Error('legacy GSettings seed is incomplete');
-    for (const additiveKey of ['usage-display', 'show-time-pace']) {
+    for (const additiveKey of ['usage-display', 'show-time-pace', 'weekly-pace']) {
         if (source.includes(`\n${additiveKey}=`))
             throw new Error(`legacy GSettings seed already contains ${additiveKey}`);
     }
@@ -119,6 +119,7 @@ function assertLegacySettingsSeedGuard() {
     for (const [line, key] of [
         ["usage-display='left'", 'usage-display'],
         ['show-time-pace=false', 'show-time-pace'],
+        ["weekly-pace='weekdays'", 'weekly-pace'],
     ]) {
         let rejected = false;
         try {
@@ -861,7 +862,8 @@ try {
         'tests/unit/codex-contract.test.js',
         'tests/unit/design-tokens.test.js', 'tests/unit/history-store.test.js',
         'tests/unit/panel-preferences.test.js',
-        'tests/unit/surface-controller.test.js']);
+        'tests/unit/surface-controller.test.js',
+        'tests/unit/weekday-pace-timezone.test.js']);
     run('gjs', ['-m', 'tests/unit/codex-adapter.test.js']);
     run('gjs', ['-m', 'tests/unit/claude-adapter.test.js']);
     run('gjs', ['-m', 'tests/unit/history-runtime.test.js']);

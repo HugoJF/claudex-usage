@@ -81,10 +81,22 @@ function captureDirectory() {
 
 async function captureActor(actor, filename) {
     const directory = captureDirectory();
-    if (!directory.query_exists(null))
+    if (!directory.query_exists(null)) {
         directory.make_directory_with_parents(null);
-    const [x, y] = actor.get_transformed_position();
-    const [width, height] = actor.get_transformed_size();
+    }
+    let geometry = null;
+    for (let attempt = 0; attempt < 60; attempt++) {
+        const [x, y] = actor.get_transformed_position();
+        const [width, height] = actor.get_transformed_size();
+        if (actor.is_mapped() && Number.isFinite(x) && Number.isFinite(y) &&
+            width > 0 && height > 0) {
+            geometry = {x, y, width, height};
+            break;
+        }
+        await Scripting.sleep(80);
+    }
+    assert(geometry, `${filename} actor has no capturable geometry`);
+    const {x, y, width, height} = geometry;
     const stream = directory.get_child(filename).replace(null, false,
         Gio.FileCreateFlags.REPLACE_DESTINATION, null);
     const screenshot = new Shell.Screenshot();
@@ -125,7 +137,7 @@ function provider({id, order, label, detail, windows, readings, refreshCounts}) 
     };
 }
 
-function registerFixtures(extension) {
+function registerFixtures(extension, nowMs) {
     const refreshCounts = {};
     const removers = [
         extension.registerProvider(provider({
@@ -145,8 +157,8 @@ function registerFixtures(extension) {
                 },
             ],
             readings: [
-                {id: 'short', percent: 8, resetAtMs: Date.now() + 3 * 3600000},
-                {id: 'weekly', percent: 68, resetAtMs: Date.now() + 4 * 86400000},
+                {id: 'short', percent: 8, resetAtMs: nowMs + 3 * 3600000},
+                {id: 'weekly', percent: 68, resetAtMs: nowMs + 4 * 86400000},
             ],
             refreshCounts,
         })),
@@ -158,7 +170,8 @@ function registerFixtures(extension) {
                 dataRole: 'dataCodexWeekly',
                 durationMs: 7 * 86400000,
             }],
-            readings: [{id: 'weekly', percent: 42, resetAtMs: Date.now() + 4 * 86400000}],
+            readings: [{id: 'weekly', percent: 42,
+                resetAtMs: nowMs + 4 * 86400000}],
             refreshCounts,
         })),
     ];
@@ -183,6 +196,9 @@ async function writePhase(extension, indicator, refreshCounts) {
     assert(initial.timePace === true &&
         extension._settings.get_user_value('show-time-pace') === null,
     'a legacy backend with no Time pace key resolves on without writing it');
+    assert(initial.weeklyPace.id === 'every-day' &&
+        extension._settings.get_user_value('weekly-pace') === null,
+    'a legacy backend with no weekly pace key resolves to Every day without writing it');
     let icons = findClasses(findActor(indicator, 'claudex-live-panel'),
         'claudex-panel-provider-icon');
     assert(icons[0]?.get_accessible_name() === 'Claude mark, 68 percent used' &&
@@ -215,6 +231,10 @@ async function writePhase(extension, indicator, refreshCounts) {
     'settings exposes the default Used display choice');
     assert(findActor(popover, 'toggle-showTimePace').checked,
         'settings exposes the default-on Time pace switch');
+    const weeklyPaceChoice = findActor(popover, 'weekly-pace-choice');
+    assert(weeklyPaceChoice.get_accessible_name() === 'Weekly pace, Every day' &&
+        collectLabelText(weeklyPaceChoice).includes('Every day  ›'),
+    'settings places the default weekly pace choice beneath Time pace');
     await captureActor(indicator.menu.actor, CAPTURES[0]);
 
     const beforePaceChange = {...refreshCounts};
@@ -279,11 +299,44 @@ async function writePhase(extension, indicator, refreshCounts) {
         shortProgress.get_accessible_name() ===
             'Claude 5-hour window at 92 percent left; Time pace 60 percent left',
     'back complements Time pace geometry and accessibility with the display basis');
+    const weeklyProgress = findActor(indicator.menu.actor,
+        'progress-claude--weekly');
+    assert(findActor(weeklyProgress, 'pace-claude--weekly')?.x === 180 &&
+        weeklyProgress.get_accessible_name() ===
+            'Claude Weekly window at 32 percent left; Time pace 57 percent left',
+    'Every day remains the default weekly pace basis');
     const rawProviders = extension.getSurfaceSnapshot().providers;
     assert(rawProviders[0].metrics[0].percent === 8 &&
         rawProviders[0].metrics[1].percent === 68 &&
         rawProviders[1].metrics[0].percent === 42,
     'the surface snapshot remains canonical Used data');
+    findActor(indicator.menu.actor, 'settings-button').emit('clicked', 1);
+    await settle();
+    popover = findActor(indicator.menu.actor, 'claudex-live-popover');
+
+    const beforeWeeklyPaceChange = {...refreshCounts};
+    findActor(popover, 'weekly-pace-choice').emit('clicked', 1);
+    await settle();
+    popover = findActor(indicator.menu.actor, 'claudex-live-popover');
+    assert(preferences(extension.getSurfaceSnapshot()).weeklyPace.id === 'weekdays' &&
+        findActor(popover, 'weekly-pace-choice').get_accessible_name() ===
+            'Weekly pace, Weekdays' &&
+        JSON.stringify(refreshCounts) === JSON.stringify(beforeWeeklyPaceChange),
+    'Weekdays applies in place without refreshing a provider');
+    findActor(popover, 'back-button').emit('clicked', 1);
+    await settle();
+    const weekdayShortProgress = findActor(indicator.menu.actor,
+        'progress-claude--short');
+    const weekdayWeeklyProgress = findActor(indicator.menu.actor,
+        'progress-claude--weekly');
+    assert(findActor(weekdayShortProgress, 'pace-claude--short')?.x === 189 &&
+        weekdayShortProgress.get_accessible_name() ===
+            'Claude 5-hour window at 92 percent left; Time pace 60 percent left',
+    'Weekdays leaves the rolling 5-hour pace unchanged');
+    assert(findActor(weekdayWeeklyProgress, 'pace-claude--weekly')?.x === 220 &&
+        weekdayWeeklyProgress.get_accessible_name() ===
+            'Claude Weekly window at 32 percent left; Time pace 70 percent left',
+    'Weekdays compresses the weekly provider window onto local weekdays');
     findActor(indicator.menu.actor, 'settings-button').emit('clicked', 1);
     await settle();
     popover = findActor(indicator.menu.actor, 'claudex-live-popover');
@@ -356,7 +409,8 @@ async function readPhase(extension, indicator, refreshCounts) {
         preferences(snapshot).localHistory === true &&
         preferences(snapshot).historyRange.id === '6h' &&
         preferences(snapshot).usageDisplay.id === 'left' &&
-        preferences(snapshot).timePace === false,
+        preferences(snapshot).timePace === false &&
+        preferences(snapshot).weeklyPace.id === 'weekdays',
     'fresh Shell restores every persisted preference');
     const panel = findActor(indicator, 'claudex-live-panel');
     const panelIcons = findClasses(panel, 'claudex-panel-provider-icon');
@@ -376,7 +430,9 @@ async function readPhase(extension, indicator, refreshCounts) {
         findActor(popover, 'toggle-showClaudeWeekly').checked === false &&
         findActor(popover, 'toggle-showTimePace').checked === false &&
         findActor(popover, 'usage-display-choice').get_accessible_name() ===
-            'Usage display, Left',
+            'Usage display, Left' &&
+        findActor(popover, 'weekly-pace-choice').get_accessible_name() ===
+            'Weekly pace, Weekdays',
     'restored settings are rendered in the fresh popup');
     findActor(popover, 'back-button').emit('clicked', 1);
     await settle();
@@ -398,7 +454,7 @@ async function readPhase(extension, indicator, refreshCounts) {
     const codexProgress = findActor(indicator.menu.actor, 'progress-codex--weekly');
     assert(findActor(codexProgress, 'pace-codex--weekly') &&
         codexProgress.get_accessible_name() ===
-            'Codex Weekly window at 58 percent left; Time pace 57 percent left',
+            'Codex Weekly window at 58 percent left; Time pace 70 percent left',
     'restored popup accessibility and geometry use the persisted Left basis');
 }
 
@@ -406,13 +462,16 @@ export async function run() {
     await settle();
     const extension = Main.extensionManager.lookup(UUID)?.stateObj;
     assert(extension, 'production extension is enabled');
+    const productionClock = extension._now;
+    const nowMs = new Date(2026, 6, 21, 12).getTime();
+    extension._now = () => nowMs;
     const historyRoot = GLib.getenv('CLAUDEX_HISTORY_DIR');
     assert(historyRoot && GLib.path_is_absolute(historyRoot) &&
         historyRoot !== GLib.build_filenamev([
             GLib.get_user_data_dir(), 'claudex-usage',
         ]),
     'settings journey keeps any enabled history writes in its isolated directory');
-    const {removers, refreshCounts} = registerFixtures(extension);
+    const {removers, refreshCounts} = registerFixtures(extension, nowMs);
     await settle();
     const indicator = Main.panel.statusArea[UUID];
     assert(indicator, 'eligible providers create the surface');
@@ -421,4 +480,5 @@ export async function run() {
     else
         await writePhase(extension, indicator, refreshCounts);
     removers.forEach(remove => remove());
+    extension._now = productionClock;
 }

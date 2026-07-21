@@ -14,9 +14,13 @@ import {
     refreshInterval,
     TIME_PACE_KEY,
     usageDisplay,
+    WEEKLY_PACE_KEY,
+    weeklyPace,
+    nextWeeklyPace,
 } from '../../extension/panel-preferences.js';
 
-function settings({booleans = {}, interval = 0, range = 0, display = 0} = {}) {
+function settings({booleans = {}, interval = 0, range = 0, display = 0,
+    pace = 0} = {}) {
     return {
         get_boolean: key => Object.hasOwn(booleans, key) ? booleans[key] : true,
         get_enum: key => {
@@ -24,6 +28,8 @@ function settings({booleans = {}, interval = 0, range = 0, display = 0} = {}) {
                 return range;
             if (key === 'usage-display')
                 return display;
+            if (key === WEEKLY_PACE_KEY)
+                return pace;
             assert.equal(key, 'refresh-interval');
             return interval;
         },
@@ -44,6 +50,8 @@ test('panel preferences map each semantic role to its durable boolean', () => {
     assert.equal(snapshot.refreshInterval.label, '10 min');
     assert.equal(snapshot.refreshInterval.ms, 600000);
     assert.equal(snapshot.timePace, true);
+    assert.deepEqual(snapshot.weeklyPace,
+        {index: 0, id: 'every-day', label: 'Every day'});
     assert.deepEqual(snapshot.usageDisplay, {index: 0, id: 'used', label: 'Used'});
     assert(Object.isFrozen(snapshot) && Object.isFrozen(snapshot.visibility));
     assert.deepEqual(PANEL_LIMITS.map(limit => limit.key), [
@@ -78,6 +86,22 @@ test('Time pace is a strict persisted boolean preference', () => {
         });
         assert.throws(() => readPanelPreferences(settings({booleans})));
     }
+});
+
+test('weekly pace is strict, frozen, cyclic, and included in preference reads', () => {
+    const snapshot = readPanelPreferences(settings({pace: 1}));
+    assert.deepEqual(snapshot.weeklyPace,
+        {index: 1, id: 'weekdays', label: 'Weekdays'});
+    assert(Object.isFrozen(snapshot.weeklyPace));
+    assert.equal(weeklyPace(0).id, 'every-day');
+    assert.equal(nextWeeklyPace(0).id, 'weekdays');
+    assert.equal(nextWeeklyPace(1).id, 'every-day');
+    assert(isPreferenceKey(WEEKLY_PACE_KEY));
+    assert(!isPreferenceKey('weeklyPace'));
+    for (const value of [-1, 2, 0.5, '0']) {
+        assert.throws(() => weeklyPace(value));
+    }
+    assert.throws(() => readPanelPreferences(settings({pace: 2})));
 });
 
 test('usage display is strict, frozen, cyclic, and included in preference reads', () => {

@@ -27,10 +27,12 @@ import {
     isPreferenceKey,
     nextRefreshInterval,
     nextUsageDisplay,
+    nextWeeklyPace,
     PANEL_LIMITS,
     readPanelPreferences,
     TIME_PACE_KEY,
     USAGE_DISPLAY_KEY,
+    WEEKLY_PACE_KEY,
 } from './panel-preferences.js';
 import {createCodexProvider, CodexRuntime} from './codex-runtime.js';
 import {createClaudeProvider, ClaudeRuntime} from './claude-runtime.js';
@@ -444,6 +446,15 @@ export default class ClaudexUsageExtension extends Extension {
                 !this._preferences.timePace),
             tokens: this._tokens,
         }));
+        const weeklyPace = this._preferences.weeklyPace;
+        displaySettings.add_child(ChoiceRow({
+            id: 'weekly-pace-choice',
+            title: 'Weekly pace',
+            value: `${weeklyPace.label}  ›`,
+            accessibleName: `Weekly pace, ${weeklyPace.label}`,
+            onActivate: () => this._settings.set_enum(WEEKLY_PACE_KEY,
+                nextWeeklyPace(weeklyPace.index).index),
+        }));
         const history = column('selected-settings-section');
         history.add_child(label('HISTORY', 'selected-settings-kicker'));
         history.add_child(SettingsRow({
@@ -476,9 +487,14 @@ export default class ClaudexUsageExtension extends Extension {
 
     _displayMetric(provider, metric) {
         const percent = this._displayPercent(metric.percent);
+        let elapsedPercent = metric.elapsedPercent;
+        if (this._preferences.weeklyPace.id === 'weekdays' &&
+            Object.hasOwn(metric, 'weekdayElapsedPercent')) {
+            elapsedPercent = metric.weekdayElapsedPercent ?? undefined;
+        }
         const pacePercent = this._preferences.timePace &&
-            metric.elapsedPercent !== undefined
-            ? this._displayPercent(metric.elapsedPercent)
+            elapsedPercent !== undefined
+            ? this._displayPercent(elapsedPercent)
             : undefined;
         const paceAccessible = pacePercent === undefined
             ? ''

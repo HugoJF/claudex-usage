@@ -64,15 +64,17 @@ source values. J-004 keeps this composition intact while substituting only dispo
 endpoint and process-root inputs.
 
 The package declares `org.gnome.shell.extensions.claudex-usage` and includes its
-GSettings schema, which GNOME compiles on installation. It persists eight preferences:
+GSettings schema, which GNOME compiles on installation. It persists nine preferences:
 three panel-visibility booleans, the refresh enum, the global Used/Left display enum,
-the global default-on Time pace boolean, and the local-history boolean and range enum.
-Display changes map canonical used percentages and elapsed-window pace only while
-composing the panel, provider cards, progress accessibility, and chart; they neither
-refresh providers nor rewrite history. Other settings changes rerender immediately
-and cadence changes reschedule the single timer without a concurrent refresh. J-003
-proves both additive defaults and every value across two fresh Shell sessions through
-a disposable keyfile backend.
+the global default-on Time pace boolean, the Every day/Weekdays weekly-pace enum, and
+the local-history boolean and range enum. Weekdays compresses exact seven-day provider
+windows onto local Monday–Friday time while shorter windows retain elapsed-clock pace.
+Display changes map canonical used percentages and selected pace only while composing
+the panel, provider cards, progress accessibility, and chart; they neither refresh
+providers nor rewrite history. Other settings changes rerender immediately and cadence
+changes reschedule the single timer without a concurrent refresh. J-003 proves both
+additive defaults and every value across two fresh Shell sessions through a disposable
+keyfile backend.
 
 `history-store.js` is a pure sample-store boundary shared by Node and GJS; `history-runtime.js`
 loads and persists its serialized form as a durable JSON file under the user data

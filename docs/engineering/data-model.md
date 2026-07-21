@@ -1,11 +1,11 @@
 # Data Model
 
 The catalog retains only process-local presentation state. The production shell
-persists eight preferences in its GSettings schema: three boolean visibility choices,
+persists nine preferences in its GSettings schema: three boolean visibility choices,
 one refresh-cadence enum, a global `usage-display` enum defaulting to `used`, a global
-`show-time-pace` boolean defaulting to true, the local-history boolean, and the
-history-range enum. Raw responses, credentials, errors, pace values, and popup view
-state are never persisted.
+`show-time-pace` boolean defaulting to true, a global `weekly-pace` enum defaulting to
+`every-day`, the local-history boolean, and the history-range enum. Raw responses,
+credentials, errors, pace values, and popup view state are never persisted.
 
 Local usage history adds one durable, local-only store, defined by the
 `extension/history-store.js` boundary and written during the existing refresh cycle. It
@@ -25,5 +25,8 @@ neither loss feeds back into the controller, provider, or durable store.
 
 Provider window duration is immutable adapter metadata. The controller derives an
 ephemeral bounded elapsed percentage from duration, reset time, and the current clock;
-the composer maps that percentage through Used or Left only for the optional Time pace
-marker and its accessibility text.
+an exact seven-day window also carries a weekday-compressed percentage, or `null` when
+its local calendar cannot be represented. The composer selects the configured weekly
+basis, maps it through Used or Left, and consumes it only for the optional Time pace
+marker and its accessibility text. Shorter rolling windows always use elapsed clock
+time.

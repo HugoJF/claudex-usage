@@ -78,7 +78,8 @@ function captureDirectory() {
     return repo.get_child('design').get_child('captures');
 }
 
-async function captureActor(actorSource, filename, padding = 8) {
+async function captureActor(actorSource, filename, padding = 8,
+    useAllocation = false) {
     const directory = captureDirectory();
     if (!directory.query_exists(null))
         directory.make_directory_with_parents(null);
@@ -91,12 +92,42 @@ async function captureActor(actorSource, filename, padding = 8) {
     for (let attempt = 0; attempt < 60; attempt++) {
         const candidate = getActor();
         if (candidate?.is_mapped()) {
-            const [actorX, actorY] = candidate.get_transformed_position();
-            const [actorWidth, actorHeight] = candidate.get_transformed_size();
-            if (actorWidth > 0 && actorHeight > 0) {
-                actor = candidate;
-                geometry = {actorX, actorY, actorWidth, actorHeight};
-                break;
+            if (!useAllocation) {
+                const [actorX, actorY] = candidate.get_transformed_position();
+                const [actorWidth, actorHeight] = candidate.get_transformed_size();
+                if (Number.isFinite(actorX) && Number.isFinite(actorY) &&
+                    actorWidth > 0 && actorHeight > 0) {
+                    actor = candidate;
+                    geometry = {actorX, actorY, actorWidth, actorHeight};
+                    break;
+                }
+            }
+            if (useAllocation) {
+                let child = candidate;
+                let ancestor = child.get_parent();
+                let offsetX = child.x;
+                let offsetY = child.y;
+                while (ancestor) {
+                    const [ancestorX, ancestorY] = ancestor.get_transformed_position();
+                    if (Number.isFinite(ancestorX) && Number.isFinite(ancestorY) &&
+                        candidate.width > 0 && candidate.height > 0) {
+                        actor = candidate;
+                        geometry = {
+                            actorX: ancestorX + offsetX,
+                            actorY: ancestorY + offsetY,
+                            actorWidth: candidate.width,
+                            actorHeight: candidate.height,
+                        };
+                        break;
+                    }
+                    child = ancestor;
+                    ancestor = child.get_parent();
+                    offsetX += child.x;
+                    offsetY += child.y;
+                }
+                if (geometry) {
+                    break;
+                }
             }
         }
         await Scripting.sleep(80);
@@ -147,7 +178,7 @@ export async function run() {
     assert(collectLabelText(actors.panel).join(' ').includes('42%'),
         'panel shows the Codex weekly percentage');
     await captureActor(() => catalog.getCatalogActors().panel,
-        EXPECTED_CAPTURES[0], 6);
+        EXPECTED_CAPTURES[0], 6, true);
     await settle();
 
     assert(!actors.indicator.menu.isEmpty(), 'Shell popup contains the catalog');
@@ -219,7 +250,7 @@ export async function run() {
     offToggle.grab_key_focus();
     await captureActor(actors.indicator.menu.actor, EXPECTED_CAPTURES[4]);
     await captureActor(() => catalog.getCatalogActors().panel,
-        EXPECTED_CAPTURES[5], 6);
+        EXPECTED_CAPTURES[5], 6, true);
     offToggle.remove_style_pseudo_class('hover');
 
     click(offToggle, 'Claude 5-hour visibility switch restore');
@@ -234,7 +265,7 @@ export async function run() {
     assert(collectLabelText(actors.panel).join(' ').includes('8% · 68%'),
         'variant A keeps compact percentages');
     await captureActor(() => catalog.getCatalogActors().panel,
-        EXPECTED_CAPTURES[8], 6);
+        EXPECTED_CAPTURES[8], 6, true);
     actors.indicator.menu.open();
     await settle();
     actors = catalog.getCatalogActors();
@@ -285,7 +316,7 @@ export async function run() {
     assert(collectLabelText(actors.panel).join(' ').includes('5h 8% · 68%'),
         'variant B labels the compact 5-hour value');
     await captureActor(() => catalog.getCatalogActors().panel,
-        EXPECTED_CAPTURES[11], 6);
+        EXPECTED_CAPTURES[11], 6, true);
     actors.indicator.menu.open();
     await settle();
     actors = catalog.getCatalogActors();
@@ -303,7 +334,7 @@ export async function run() {
     assert(collectLabelText(actors.panel).join(' ').includes('8% | 68%'),
         'variant C uses a stronger compact separator');
     await captureActor(() => catalog.getCatalogActors().panel,
-        EXPECTED_CAPTURES[13], 6);
+        EXPECTED_CAPTURES[13], 6, true);
     actors.indicator.menu.open();
     await settle();
     actors = catalog.getCatalogActors();
@@ -330,7 +361,7 @@ export async function run() {
     await settle();
     actors = catalog.getCatalogActors();
     await captureActor(() => catalog.getCatalogActors().panel,
-        EXPECTED_CAPTURES[6], 6);
+        EXPECTED_CAPTURES[6], 6, true);
     setShellColorScheme(originalScheme);
     await settle();
 
@@ -342,7 +373,7 @@ export async function run() {
     assert(actors.panel.height <= Main.panel.height,
         'panel indicator remains bounded at 200% scaling');
     await captureActor(() => catalog.getCatalogActors().panel,
-        EXPECTED_CAPTURES[7], 6);
+        EXPECTED_CAPTURES[7], 6, true);
     themeContext.set_scale_factor(originalScale);
     await settle();
 }

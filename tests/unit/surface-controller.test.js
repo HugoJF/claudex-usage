@@ -23,8 +23,8 @@ async function settle() {
     await new Promise(resolve => setImmediate(resolve));
 }
 
-function harness() {
-    let now = 1_000_000;
+function harness(initialNow = 1_000_000) {
+    let now = initialNow;
     let nextTimerId = 0;
     const timers = new Map();
     const snapshots = [];
@@ -155,7 +155,73 @@ test('optional duration snapshots immutably and derives elapsed window time', as
     const unpaced = unpacedState.controller.getSnapshot().providers[0];
     assert(!Object.hasOwn(unpaced.windows[0], 'durationMs'));
     assert(!Object.hasOwn(unpaced.metrics[0], 'elapsedPercent'));
+    assert(!Object.hasOwn(unpaced.metrics[0], 'weekdayElapsedPercent'));
 });
+
+test('weekly pace compresses the provider window onto local weekdays', async () => {
+    const week = 7 * 24 * 60 * 60 * 1000;
+    const fridayAtTwenty = new Date(2026, 6, 17, 20).getTime();
+    const mondayAtFour = new Date(2026, 6, 20, 4).getTime();
+    const state = harness(fridayAtTwenty);
+    state.controller.registerProvider(provider({
+        windows: [{
+            id: 'weekly',
+            label: 'Weekly window',
+            dataRole: 'dataClaudeWeekly',
+            durationMs: week,
+        }],
+        refresh: async () => ({
+            status: 'available',
+            readings: [{id: 'weekly', percent: 25, resetAtMs: mondayAtFour}],
+        }),
+    }));
+    await settle();
+
+    let metric = state.controller.getSnapshot().providers[0].metrics[0];
+    assert(Math.abs(metric.elapsedPercent - 2 / 3 * 100) < 1e-10);
+    assert(Math.abs(metric.weekdayElapsedPercent - 112 / 120 * 100) < 1e-10,
+        'Friday 20:00 leaves eight weekday pacing hours before Monday 04:00');
+
+    state.advance(16 * 60 * 60 * 1000);
+    metric = state.controller.getSnapshot().providers[0].metrics[0];
+    const saturdayPace = metric.weekdayElapsedPercent;
+    assert(Math.abs(saturdayPace - 116 / 120 * 100) < 1e-10,
+        'Saturday starts with four weekday pacing hours remaining');
+    state.advance(24 * 60 * 60 * 1000);
+    metric = state.controller.getSnapshot().providers[0].metrics[0];
+    assert.equal(metric.weekdayElapsedPercent, saturdayPace,
+        'weekend clock time contributes no pacing time');
+    state.advance(16 * 60 * 60 * 1000);
+    assert.equal(state.controller.getSnapshot().providers[0].metrics[0]
+        .weekdayElapsedPercent, 100);
+});
+
+test('unrepresentable weekly calendars remain distinct from non-weekly windows',
+    async () => {
+        const week = 7 * 24 * 60 * 60 * 1000;
+        const state = harness();
+        state.controller.registerProvider(provider({
+            windows: [{
+                id: 'weekly',
+                label: 'Weekly window',
+                dataRole: 'dataClaudeWeekly',
+                durationMs: week,
+            }],
+            refresh: async () => ({
+                status: 'available',
+                readings: [{
+                    id: 'weekly',
+                    percent: 25,
+                    resetAtMs: Number.MAX_SAFE_INTEGER,
+                }],
+            }),
+        }));
+        await settle();
+        const metric = state.controller.getSnapshot().providers[0].metrics[0];
+        assert.equal(metric.elapsedPercent, 0);
+        assert(Object.hasOwn(metric, 'weekdayElapsedPercent'));
+        assert.equal(metric.weekdayElapsedPercent, null);
+    });
 
 test('failed provisional registration is inert and releases its provider ID', async () => {
     const state = harness();

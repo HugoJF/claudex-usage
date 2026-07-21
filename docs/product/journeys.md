@@ -64,8 +64,8 @@ Owning Spec: [SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)
 4. The user turns Time pace off or on; every current bar removes or restores its
    marker immediately without refreshing a provider.
 5. The user changes weekly pace from Every day to Weekdays; weekly markers update
-   immediately around local weekends while shorter rolling-window markers do not
-   change.
+   immediately using only local weekday time remaining before the provider reset,
+   while shorter rolling-window markers do not change.
 6. The user changes the refresh-cadence choice; the new cadence applies without a
    restart.
 7. After GNOME Shell restarts, the panel and popup honor the persisted visibility,

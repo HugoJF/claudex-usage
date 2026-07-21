@@ -33,6 +33,7 @@ export const LOCAL_HISTORY_KEY = 'show-usage-history';
 export const HISTORY_RANGE_KEY = 'history-range';
 export const USAGE_DISPLAY_KEY = 'usage-display';
 export const TIME_PACE_KEY = 'show-time-pace';
+export const WEEKLY_PACE_KEY = 'weekly-pace';
 
 export const HISTORY_RANGES = Object.freeze([
     Object.freeze({index: 0, id: '1h', label: '1h'}),
@@ -47,6 +48,11 @@ const USAGE_DISPLAYS = Object.freeze([
     Object.freeze({index: 1, id: 'left', label: 'Left'}),
 ]);
 
+const WEEKLY_PACES = Object.freeze([
+    Object.freeze({index: 0, id: 'every-day', label: 'Every day'}),
+    Object.freeze({index: 1, id: 'weekdays', label: 'Weekdays'}),
+]);
+
 const LIMIT_BY_KEY = new Map(PANEL_LIMITS.map(limit => [limit.key, limit]));
 const HISTORY_RANGE_BY_ID = new Map(HISTORY_RANGES.map(range => [range.id, range]));
 const USAGE_DISPLAY_BY_ID = new Map(USAGE_DISPLAYS.map(display =>
@@ -59,7 +65,8 @@ function frozen(value) {
 export function isPreferenceKey(key) {
     return LIMIT_BY_KEY.has(key) || key === REFRESH_INTERVAL_KEY ||
         key === LOCAL_HISTORY_KEY || key === HISTORY_RANGE_KEY ||
-        key === USAGE_DISPLAY_KEY || key === TIME_PACE_KEY;
+        key === USAGE_DISPLAY_KEY || key === TIME_PACE_KEY ||
+        key === WEEKLY_PACE_KEY;
 }
 
 export function refreshInterval(index) {
@@ -93,6 +100,17 @@ export function usageDisplay(index) {
 
 export function nextUsageDisplay(index) {
     return USAGE_DISPLAYS[(usageDisplay(index).index + 1) % USAGE_DISPLAYS.length];
+}
+
+export function weeklyPace(index) {
+    if (!Number.isInteger(index) || !WEEKLY_PACES[index]) {
+        throw new Error('Weekly pace enum must be a known integer');
+    }
+    return WEEKLY_PACES[index];
+}
+
+export function nextWeeklyPace(index) {
+    return WEEKLY_PACES[(weeklyPace(index).index + 1) % WEEKLY_PACES.length];
 }
 
 export function displayPercent(usedPercent, displayId) {
@@ -129,5 +147,6 @@ export function readPanelPreferences(settings) {
         historyRange: historyRange(settings.get_enum(HISTORY_RANGE_KEY)),
         usageDisplay: usageDisplay(settings.get_enum(USAGE_DISPLAY_KEY)),
         timePace,
+        weeklyPace: weeklyPace(settings.get_enum(WEEKLY_PACE_KEY)),
     });
 }

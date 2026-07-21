@@ -16,6 +16,10 @@
     <value nick="used" value="0"/>
     <value nick="left" value="1"/>
   </enum>
+  <enum id="org.gnome.shell.extensions.claudex-usage.WeeklyPace">
+    <value nick="every-day" value="0"/>
+    <value nick="weekdays" value="1"/>
+  </enum>
   <schema id="org.gnome.shell.extensions.claudex-usage" path="/org/gnome/shell/extensions/claudex-usage/">
     <key name="show-claude-short" type="b"><default>true</default></key>
     <key name="show-claude-weekly" type="b"><default>true</default></key>
@@ -25,5 +29,6 @@
     <key name="history-range" enum="org.gnome.shell.extensions.claudex-usage.HistoryRange"><default>'6h'</default></key>
     <key name="usage-display" enum="org.gnome.shell.extensions.claudex-usage.UsageDisplay"><default>'used'</default></key>
     <key name="show-time-pace" type="b"><default>true</default></key>
+    <key name="weekly-pace" enum="org.gnome.shell.extensions.claudex-usage.WeeklyPace"><default>'every-day'</default></key>
   </schema>
 </schemalist>

@@ -36,7 +36,12 @@ When a window declares `durationMs`, the surface snapshots it as immutable metad
 and derives an ephemeral `elapsedPercent` from its reset timestamp and the current
 clock. The result is clamped to 0–100; an omitted duration produces no elapsed value,
 and no duration or elapsed percentage is persisted. Duration is authoritative for
-this calculation and is never inferred from a label or data role.
+this calculation and is never inferred from a label or data role. An exact seven-day
+duration additionally produces `weekdayElapsedPercent`: a finite 0–100 percentage of
+local Monday–Friday milliseconds elapsed, or `null` when a required local date boundary
+cannot be represented. Non-weekly metrics omit that field. Weekend milliseconds do
+not contribute, so a Friday 20:00 to Monday 04:00 remainder contains eight pacing
+hours.
 
 ## Codex credential and usage boundary
 

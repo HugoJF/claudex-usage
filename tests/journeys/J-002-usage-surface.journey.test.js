@@ -72,25 +72,75 @@ function captureDirectory() {
     return repo.get_child('design').get_child('captures');
 }
 
-async function captureActor(target, filename, padding = 8) {
+async function captureActor(target, filename, padding = 8,
+    useAllocation = false, fixedTopRight = null) {
     let actor = null;
-    let actorWidth = 0;
-    let actorHeight = 0;
+    let geometry = null;
     for (let attempt = 0; attempt < 40; attempt++) {
         actor = typeof target === 'function' ? target() : target;
-        if (actor?.is_mapped())
-            [actorWidth, actorHeight] = actor.get_transformed_size();
-        if (actorWidth > 0 && actorHeight > 0)
-            break;
+        if (actor?.is_mapped()) {
+            if (fixedTopRight) {
+                geometry = {
+                    actorX: global.screen_width - fixedTopRight.width - padding,
+                    actorY: padding,
+                    actorWidth: fixedTopRight.width,
+                    actorHeight: fixedTopRight.height,
+                };
+                break;
+            }
+            const [actorX, actorY] = actor.get_transformed_position();
+            const [actorWidth, actorHeight] = actor.get_transformed_size();
+            if (Number.isFinite(actorX) && Number.isFinite(actorY) &&
+                actorWidth > 0 && actorHeight > 0) {
+                geometry = {actorX, actorY, actorWidth, actorHeight};
+                break;
+            }
+            if (Number.isFinite(actorX) && Number.isFinite(actorY) &&
+                actor.width > 0 && actor.height > 0) {
+                geometry = {
+                    actorX,
+                    actorY,
+                    actorWidth: actor.width,
+                    actorHeight: actor.height,
+                };
+                break;
+            }
+            if (useAllocation) {
+                let child = actor;
+                let ancestor = child.get_parent();
+                let offsetX = child.x;
+                let offsetY = child.y;
+                while (ancestor) {
+                    const [ancestorX, ancestorY] = ancestor.get_transformed_position();
+                    if (Number.isFinite(ancestorX) && Number.isFinite(ancestorY) &&
+                        actor.width > 0 && actor.height > 0) {
+                        geometry = {
+                            actorX: ancestorX + offsetX,
+                            actorY: ancestorY + offsetY,
+                            actorWidth: actor.width,
+                            actorHeight: actor.height,
+                        };
+                        break;
+                    }
+                    child = ancestor;
+                    ancestor = child.get_parent();
+                    offsetX += child.x;
+                    offsetY += child.y;
+                }
+                if (geometry) {
+                    break;
+                }
+            }
+        }
         await Scripting.sleep(50);
     }
     assert(actor?.is_mapped(), `${filename} actor is not mapped`);
-    assert(actorWidth > 0 && actorHeight > 0,
-        `${filename} actor has no allocated geometry`);
+    assert(geometry, `${filename} actor has no allocated geometry`);
     const directory = captureDirectory();
-    if (!directory.query_exists(null))
+    if (!directory.query_exists(null)) {
         directory.make_directory_with_parents(null);
-    const [actorX, actorY] = actor.get_transformed_position();
+    }
+    const {actorX, actorY, actorWidth, actorHeight} = geometry;
     const x = Math.max(0, Math.floor(actorX - padding));
     const y = Math.max(0, Math.floor(actorY - padding));
     const width = Math.min(global.screen_width - x, Math.ceil(actorWidth + padding * 2));
@@ -187,6 +237,7 @@ export async function run() {
     claude.setEligible(false);
     let codexUnavailable = false;
     let codexPercent = 41;
+    let codexReset = nowMs + 4 * 86400000;
     let codexCalls = 0;
     const codex = usageProvider({
         id: 'codex',
@@ -200,14 +251,14 @@ export async function run() {
             durationMs: 7 * 24 * 60 * 60 * 1000,
         },
         reading: () => ({id: 'weekly', percent: codexPercent,
-            resetAtMs: nowMs + 4 * 86400000}),
+            resetAtMs: codexReset}),
         refresh: () => {
             codexCalls++;
             return codexUnavailable
                 ? Promise.reject(new Error('provider response deliberately hidden'))
                 : Promise.resolve({status: 'available', readings: [{
                     id: 'weekly', percent: codexPercent,
-                    resetAtMs: nowMs + 4 * 86400000,
+                    resetAtMs: codexReset,
                 }]});
         },
     });
@@ -225,6 +276,8 @@ export async function run() {
     const snapshot = extension.getSurfaceSnapshot();
     assert(snapshot.providers.length === 2 && snapshot.providers.every(item =>
         item.availability === 'available'), 'both provider results settle independently');
+    assert(snapshot.preferences.weeklyPace.id === 'every-day',
+        'weekly pace defaults to Every day');
     assert(claudeCalls === 1 && codexCalls === 2 &&
         snapshot.providers.find(item => item.id === 'codex')?.metrics[0]?.percent === 42,
     'new Claude eligibility immediately runs one full shared refresh cycle');
@@ -242,7 +295,7 @@ export async function run() {
         weeklyPanelValue.get_accessible_name() ===
             'Weekly window, 42 percent used',
     'panel mutes only the short window and names each window accessibly');
-    await captureActor(panel, EXPECTED_CAPTURES[0], 6);
+    await captureActor(panel, EXPECTED_CAPTURES[0], 6, true);
 
     indicator.menu.open();
     await settle();
@@ -287,7 +340,8 @@ export async function run() {
     'surface fixture records uncovered history only inside its isolated store');
     const historyFile = Gio.File.new_for_path(historyRoot).get_child('history.json');
     let historyBeforeTick = readFileText(historyFile);
-    await captureActor(indicator.menu.actor, EXPECTED_CAPTURES[1]);
+    await captureActor(popover, EXPECTED_CAPTURES[1], 8, false,
+        {width: 426, height: 421});
 
     claudeDeferred = deferred();
     refresh.emit('clicked', 1);
@@ -304,7 +358,8 @@ export async function run() {
     'manual refresh swaps the header icon to its accessible busy state');
     refreshButton.add_style_pseudo_class('hover');
     refreshButton.grab_key_focus();
-    await captureActor(indicator.menu.actor, EXPECTED_CAPTURES[2]);
+    await captureActor(popover, EXPECTED_CAPTURES[2], 8, false,
+        {width: 426, height: 421});
     refreshButton.remove_style_pseudo_class('hover');
     claudePercent = 28;
     claudeReset = nowMs + 56 * 60 * 1000;
@@ -364,6 +419,60 @@ export async function run() {
         readFileText(historyFile) === historyBeforeTick,
     'presentation tick requests no provider data and does not rewrite history');
 
+    const weeklyStartAtMs = new Date(2026, 6, 20, 0).getTime();
+    nowMs = weeklyStartAtMs + 899.5 * 60 * 1000;
+    claudeReset = nowMs + 3 * 60 * 60 * 1000 + 50 * 60 * 1000;
+    codexReset = weeklyStartAtMs + 7 * 86400000;
+    extension._settings.set_enum('weekly-pace', 1);
+    extension.refresh();
+    await settle();
+    popover = findActor(indicator.menu.actor, 'claudex-live-popover');
+    const weeklyProgress = findActor(popover, 'progress-codex--weekly');
+    const weeklyPace = findActor(weeklyProgress, 'pace-codex--weekly');
+    const rawWeeklyBefore = extension.getSurfaceSnapshot().providers
+        .find(provider => provider.id === 'codex').metrics[0].weekdayElapsedPercent;
+    assert(weeklyPace.x === 38 &&
+        weeklyProgress.get_accessible_name() ===
+            'Codex Weekly window at 42 percent used; Time pace 12 percent used',
+    'weekday pace starts below both presentation rounding thresholds');
+    const weeklyCallsBeforeTick = [claudeCalls, codexCalls];
+    const historyBeforeWeeklyTick = readFileText(historyFile);
+    const weeklySourceBeforeTick = extension._presentationSourceId;
+    assert(weeklySourceBeforeTick !== null && GLib.Source.remove(weeklySourceBeforeTick),
+        'weekday proof owns the real presentation source');
+    extension._presentationSourceId = null;
+    nowMs += 60_000;
+    assert(extension._runPresentationTick() === GLib.SOURCE_REMOVE,
+        'weekday proof runs the production presentation callback');
+    const rawWeeklyAfter = extension.getSurfaceSnapshot().providers
+        .find(provider => provider.id === 'codex').metrics[0].weekdayElapsedPercent;
+    assert(findActor(popover, 'pace-codex--weekly') === weeklyPace &&
+        weeklyPace.x === 39 && rawWeeklyAfter > rawWeeklyBefore &&
+        weeklyProgress.get_accessible_name() ===
+            'Codex Weekly window at 42 percent used; Time pace 13 percent used',
+    'weekday tick advances the same marker across pixel and accessibility thresholds');
+    assert(JSON.stringify([claudeCalls, codexCalls]) ===
+        JSON.stringify(weeklyCallsBeforeTick) &&
+        readFileText(historyFile) === historyBeforeWeeklyTick,
+    'weekday tick requests no provider data and does not rewrite history');
+
+    extension._settings.set_enum('weekly-pace', 0);
+    codexReset = Number.MAX_SAFE_INTEGER;
+    extension.refresh();
+    await settle();
+    popover = findActor(indicator.menu.actor, 'claudex-live-popover');
+    let overflowProgress = findActor(popover, 'progress-codex--weekly');
+    assert(findActor(overflowProgress, 'pace-codex--weekly') &&
+        overflowProgress.get_accessible_name().includes('Time pace 0 percent used'),
+    'Every day remains available when the local calendar cannot represent the reset');
+    extension._settings.set_enum('weekly-pace', 1);
+    await settle();
+    popover = findActor(indicator.menu.actor, 'claudex-live-popover');
+    overflowProgress = findActor(popover, 'progress-codex--weekly');
+    assert(!findActor(overflowProgress, 'pace-codex--weekly') &&
+        !overflowProgress.get_accessible_name().includes('Time pace'),
+    'Weekdays omits an unresolvable marker instead of falling back to Every day');
+
     codexUnavailable = true;
     extension.refresh();
     await settle();
@@ -377,7 +486,8 @@ export async function run() {
         'unavailable provider drops its Time pace marker with the numeric bar');
     assert(collectLabelText(findActor(popover, 'provider-card-claude')).includes('28%'),
         'other provider remains live when one provider fails');
-    await captureActor(indicator.menu.actor, EXPECTED_CAPTURES[3]);
+    await captureActor(popover, EXPECTED_CAPTURES[3], 8, false,
+        {width: 426, height: 383});
 
     indicator.menu.close();
     assert(extension._presentationSourceId === null,
@@ -386,7 +496,8 @@ export async function run() {
     setShellColorScheme('prefer-light');
     await settle();
     indicator = Main.panel.statusArea[UUID];
-    await captureActor(findActor(indicator, 'claudex-live-panel'), EXPECTED_CAPTURES[4], 6);
+    await captureActor(findActor(indicator, 'claudex-live-panel'),
+        EXPECTED_CAPTURES[4], 6, true);
     setShellColorScheme(originalScheme);
     await settle();
     const themeContext = St.ThemeContext.get_for_stage(global.stage);
@@ -395,7 +506,7 @@ export async function run() {
     await settle();
     await captureActor(
         () => findActor(Main.panel.statusArea[UUID], 'claudex-live-panel'),
-        EXPECTED_CAPTURES[5], 6);
+        EXPECTED_CAPTURES[5], 6, true);
     themeContext.set_scale_factor(originalScale);
     await settle();
 

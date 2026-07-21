@@ -5,6 +5,8 @@ const DEFAULT_DATA_ROLES = Object.freeze([
     'dataClaudeWeekly',
     'dataCodexWeekly',
 ]);
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_WEEKDAY_SEGMENTS = 9;
 
 function requireId(value, name) {
     if (typeof value !== 'string' || !SAFE_ID.test(value))
@@ -187,6 +189,47 @@ export function elapsedWindowPercent(durationMs, resetAtMs, nowMs) {
     return elapsedMs / durationMs * 100;
 }
 
+function weekdayMilliseconds(startAtMs, endAtMs) {
+    let cursor = startAtMs;
+    let total = 0;
+    for (let segment = 0; cursor < endAtMs; segment++) {
+        if (segment >= MAX_WEEKDAY_SEGMENTS) {
+            return null;
+        }
+        const cursorDate = new Date(cursor);
+        if (!Number.isFinite(cursorDate.getTime())) {
+            return null;
+        }
+        const day = cursorDate.getDay();
+        const nextDay = new Date(cursor);
+        nextDay.setHours(24, 0, 0, 0);
+        const nextAtMs = nextDay.getTime();
+        if (!Number.isFinite(nextAtMs) || nextAtMs <= cursor) {
+            return null;
+        }
+        const segmentEndAtMs = Math.min(nextAtMs, endAtMs);
+        if (day >= 1 && day <= 5) {
+            total += segmentEndAtMs - cursor;
+        }
+        cursor = segmentEndAtMs;
+    }
+    return total;
+}
+
+function weekdayElapsedWindowPercent(resetAtMs, nowMs) {
+    const startAtMs = resetAtMs - WEEK_MS;
+    const durationMs = weekdayMilliseconds(startAtMs, resetAtMs);
+    if (durationMs === null || durationMs === 0) {
+        return null;
+    }
+    const elapsedUntilMs = Math.max(startAtMs, Math.min(nowMs, resetAtMs));
+    const elapsedMs = weekdayMilliseconds(startAtMs, elapsedUntilMs);
+    if (elapsedMs === null) {
+        return null;
+    }
+    return elapsedMs / durationMs * 100;
+}
+
 export class SurfaceController {
     constructor({now = () => Date.now(), schedule, cancel, onChange = () => {},
         refreshIntervalMs = 5 * 60 * 1000, dataRoles = DEFAULT_DATA_ROLES} = {}) {
@@ -363,6 +406,10 @@ export class SurfaceController {
                     if (window.durationMs !== undefined) {
                         metric.elapsedPercent = elapsedWindowPercent(
                             window.durationMs, reading.resetAtMs, now);
+                        if (window.durationMs === WEEK_MS) {
+                            metric.weekdayElapsedPercent =
+                                weekdayElapsedWindowPercent(reading.resetAtMs, now);
+                        }
                     }
                     return frozen(metric);
                 })
