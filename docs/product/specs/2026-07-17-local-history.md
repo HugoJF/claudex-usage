@@ -61,7 +61,7 @@ Acceptance:
 
 ## Design
 
-Canonical reference: [Usage refinement, variant A — Quiet Utility](../../../design/direction-lab/USAGE-REFINEMENT-EXPLORATION.md#variant-a--quiet-utility),
+Canonical reference: [Quiet Utility](../../../design/direction-lab/USAGE-REFINEMENT-EXPLORATION.md),
 within [Direction D — Selected Blend](../../../design/direction-lab/DIRECTION-BRIEF.md#d--selected-blend).
 The popup composes `HistoryChart` and `Legend` with an inline `< 6h >` range stepper.
 Claude 5-hour keeps its 1 px line and both weekly series their 2.5 px lines. The

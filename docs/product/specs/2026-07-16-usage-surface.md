@@ -86,7 +86,7 @@ Acceptance:
 
 ## Design
 
-Canonical reference: [Usage refinement, variant A — Quiet Utility](../../../design/direction-lab/USAGE-REFINEMENT-EXPLORATION.md#variant-a--quiet-utility),
+Canonical reference: [Quiet Utility](../../../design/direction-lab/USAGE-REFINEMENT-EXPLORATION.md),
 within [Direction D — Selected Blend](../../../design/direction-lab/DIRECTION-BRIEF.md#d--selected-blend).
 The approved settings composition places the Weekly pace `ChoiceRow` directly beneath
 the existing Time pace switch.

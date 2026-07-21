@@ -316,7 +316,7 @@ function statusRefreshButton({onActivate, tokens}) {
 
 function buildRefinementUsagePopover({state, extensionPath, tokens, actions,
     showPreviewControls}) {
-    const variant = state.refinementVariant;
+    const variant = 'a';
     const header = box('selected-header', Clutter.Orientation.HORIZONTAL, {
         x_expand: true,
     });
@@ -769,7 +769,6 @@ export default class ClaudexUsageCatalogExtension extends Extension {
         this._tokens = loadTokens(this.path);
         this._state = new CatalogState();
         this._panelSignature = null;
-        this._showRefinementControls = false;
         this._colorSchemeChangedId = St.Settings.get().connect(
             'notify::color-scheme', () => this._render());
 
@@ -788,24 +787,6 @@ export default class ClaudexUsageCatalogExtension extends Extension {
         this._popoverHost = new St.Bin({name: 'claudex-popover-host'});
         this._menuItem.add_child(this._popoverHost);
         this._indicator.menu.addMenuItem(this._menuItem);
-        this._menuKeyPressId = this._indicator.menu.actor.connect(
-            'key-press-event', (_actor, event) => {
-                if (!this._showRefinementControls)
-                    return Clutter.EVENT_PROPAGATE;
-                const variant = new Map([
-                    [Clutter.KEY_1, 'a'],
-                    [Clutter.KEY_KP_1, 'a'],
-                    [Clutter.KEY_2, 'b'],
-                    [Clutter.KEY_KP_2, 'b'],
-                    [Clutter.KEY_3, 'c'],
-                    [Clutter.KEY_KP_3, 'c'],
-                ]).get(event.get_key_symbol());
-                if (!variant)
-                    return Clutter.EVENT_PROPAGATE;
-                this.showRefinementVariant(variant);
-                return Clutter.EVENT_STOP;
-            });
-
         Main.panel.addToStatusArea(this.uuid, this._indicator, 0, 'right');
         this._render();
     }
@@ -821,8 +802,6 @@ export default class ClaudexUsageCatalogExtension extends Extension {
         this._popoverHost = null;
         this._menuItem = null;
         this._panelSignature = null;
-        this._menuKeyPressId = null;
-        this._showRefinementControls = false;
         this._state = null;
         this._tokens = null;
     }
@@ -839,18 +818,6 @@ export default class ClaudexUsageCatalogExtension extends Extension {
         };
     }
 
-    showRefinementVariant(variant) {
-        this._state.setRefinementVariant(variant);
-        this._render();
-    }
-
-    showRefinementControls() {
-        this._showRefinementControls = true;
-        if (!this._state.snapshot().refinementVariant)
-            this._state.setRefinementVariant('a');
-        this._render();
-    }
-
     _replaceChild(host, child) {
         host.get_child()?.destroy();
         host.set_child(child);
@@ -859,27 +826,14 @@ export default class ClaudexUsageCatalogExtension extends Extension {
     _render() {
         const snapshot = this._state.snapshot();
         const lightPanel = Main.sessionMode.colorScheme === 'prefer-light';
-        const panelSignature = snapshot.refinementVariant
-            ? 'refinement'
-            : [
-                'baseline',
-                snapshot.showClaudeShort,
-                snapshot.showClaudeWeekly,
-                snapshot.showCodexWeekly,
-            ].join(':');
+        const panelSignature = ['quiet-utility', snapshot.showClaudeShort,
+            snapshot.showClaudeWeekly, snapshot.showCodexWeekly, lightPanel].join(':');
         if (panelSignature !== this._panelSignature) {
-            const panel = snapshot.refinementVariant
-                ? buildRefinementPanel({
-                    variant: snapshot.refinementVariant,
-                    extensionPath: this.path,
-                    tokens: this._tokens,
-                    lightPanel,
-                })
-                : buildPanel({
-                    state: snapshot,
-                    extensionPath: this.path,
-                    tokens: this._tokens,
-                    lightPanel,
+            const panel = buildRefinementPanel({
+                variant: 'a',
+                extensionPath: this.path,
+                tokens: this._tokens,
+                lightPanel,
             });
             this._replaceChild(this._panelHost, panel);
             panel.show();
@@ -889,12 +843,9 @@ export default class ClaudexUsageCatalogExtension extends Extension {
             this._panelSignature = panelSignature;
         }
         updatePanelThemeIcons(this._panelHost.get_child(), this.path, lightPanel);
-        if (snapshot.refinementVariant) {
-            updateRefinementPanel(
-                this._panelHost.get_child(), snapshot.refinementVariant);
-            this._indicator.queue_relayout();
-            Main.panel.queue_relayout();
-        }
+        updateRefinementPanel(this._panelHost.get_child(), 'a');
+        this._indicator.queue_relayout();
+        Main.panel.queue_relayout();
 
         const actions = {
             openSettings: () => {
@@ -913,10 +864,6 @@ export default class ClaudexUsageCatalogExtension extends Extension {
                 this._state.cycleRange();
                 this._render();
             },
-            selectRefinementVariant: variant => {
-                this._state.setRefinementVariant(variant);
-                this._render();
-            },
             toggle: key => {
                 this._state.toggle(key);
                 this._render();
@@ -932,32 +879,11 @@ export default class ClaudexUsageCatalogExtension extends Extension {
             refresh: () => this._render(),
         };
 
-        let popover;
-        if (snapshot.refinementVariant) {
-            popover = snapshot.view === 'settings'
-                ? buildRefinementSettingsPopover({
-                    state: snapshot,
-                    tokens: this._tokens,
-                    actions,
-                    showPreviewControls: this._showRefinementControls,
-                })
-                : buildRefinementUsagePopover({
-                    state: snapshot,
-                    extensionPath: this.path,
-                    tokens: this._tokens,
-                    actions,
-                    showPreviewControls: this._showRefinementControls,
-                });
-        } else {
-            popover = snapshot.view === 'settings'
-                ? buildSettingsPopover({state: snapshot, tokens: this._tokens, actions})
-                : buildUsagePopover({
-                    state: snapshot,
-                    extensionPath: this.path,
-                    tokens: this._tokens,
-                    actions,
-                });
-        }
+        const popover = snapshot.view === 'settings'
+            ? buildRefinementSettingsPopover({state: snapshot, tokens: this._tokens,
+                actions, showPreviewControls: false})
+            : buildRefinementUsagePopover({state: snapshot, extensionPath: this.path,
+                tokens: this._tokens, actions, showPreviewControls: false});
         this._replaceChild(this._popoverHost, popover);
     }
 }

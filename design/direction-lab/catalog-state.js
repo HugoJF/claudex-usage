@@ -5,7 +5,6 @@ export const LIMIT_KEYS = Object.freeze([
 ]);
 
 export const RANGES = Object.freeze(['1h', '6h', '1d', '7d', '30d']);
-export const REFINEMENT_VARIANTS = Object.freeze(['a', 'b', 'c']);
 
 export const USAGE = Object.freeze({
     claudeShort: Object.freeze({
@@ -64,7 +63,6 @@ export class CatalogState {
         this.localHistory = true;
         this.timePace = true;
         this.weeklyPace = 'Every day';
-        this.refinementVariant = null;
     }
 
     setView(view) {
@@ -83,16 +81,6 @@ export class CatalogState {
         const index = RANGES.indexOf(this.activeRange);
         this.activeRange = RANGES[(index + 1) % RANGES.length];
         return this.activeRange;
-    }
-
-    setRefinementVariant(variant) {
-        if (!REFINEMENT_VARIANTS.includes(variant))
-            throw new Error(`Unknown refinement variant: ${variant}`);
-        this.refinementVariant = variant;
-        this.view = 'usage';
-        this.activeRange = '6h';
-        this.timePace = true;
-        this.weeklyPace = 'Every day';
     }
 
     toggle(key) {
@@ -126,7 +114,6 @@ export class CatalogState {
             localHistory: this.localHistory,
             timePace: this.timePace,
             weeklyPace: this.weeklyPace,
-            refinementVariant: this.refinementVariant,
         });
     }
 }

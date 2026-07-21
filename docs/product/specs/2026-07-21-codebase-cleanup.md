@@ -87,7 +87,7 @@ tokens and production geometry. Rejected executable variants and selectors are r
 - [x] `CLEAN-001` — reconcile history authority, register this Spec, and remove stale contract text.
 - [x] `CLEAN-002` — install pinned ESLint 10 flat-config guardrails.
 - [x] `CLEAN-003` — extract the production history stepper with focus and pixel proof.
-- [ ] `CLEAN-004` — make Quiet Utility the sole split catalog and canonical evidence.
+- [x] `CLEAN-004` — make Quiet Utility the sole split catalog and canonical evidence.
 - [ ] `CLEAN-005` — commit proof fixtures and remove `RangeSelector`.
 - [ ] `CLEAN-006` — make one frozen range model authoritative everywhere.
 - [ ] `CLEAN-007` — strictly parse Claude timestamps with built-in `Date`.

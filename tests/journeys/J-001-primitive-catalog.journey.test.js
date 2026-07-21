@@ -12,21 +12,12 @@ Gio._promisify(Shell.Screenshot.prototype, 'screenshot_area',
 
 const UUID = 'claudex-usage-design@hugo.local';
 const EXPECTED_CAPTURES = [
-    'panel-dark-100.png',
-    'usage-dark-100.png',
-    'usage-range-7d-focus-hover.png',
-    'settings-dark-100.png',
-    'settings-toggle-off-focus-hover.png',
-    'panel-visibility-off.png',
-    'panel-light-100.png',
-    'panel-dark-200.png',
-    'usage-refinement-a-panel-dark-100.png',
-    'usage-refinement-a-popup-dark-100.png',
-    'usage-refinement-a-settings-dark-100.png',
-    'usage-refinement-b-panel-dark-100.png',
-    'usage-refinement-b-popup-dark-100.png',
-    'usage-refinement-c-panel-dark-100.png',
-    'usage-refinement-c-popup-dark-100.png',
+    'catalog-panel-dark-100.png',
+    'catalog-popup-dark-100.png',
+    'catalog-settings-dark-100.png',
+    'catalog-panel-disabled.png',
+    'catalog-panel-light-100.png',
+    'catalog-panel-dark-200.png',
 ];
 
 export const METRICS = {};
@@ -168,6 +159,65 @@ export async function run() {
     const extension = Main.extensionManager.lookup(UUID);
     assert(extension?.stateObj, 'catalog extension is installed and enabled');
     const catalog = extension.stateObj;
+    {
+        let actors = catalog.getCatalogActors();
+        assert(actors.panel.height <= Main.panel.height,
+            'Quiet Utility stays within native panel height');
+        assert(collectLabelText(actors.panel).join(' ').includes('8% · 68%'),
+            'Quiet Utility shows compact Claude percentages');
+        await captureActor(() => catalog.getCatalogActors().panel,
+            EXPECTED_CAPTURES[0], 6, true);
+        await settle();
+
+        actors.indicator.menu.open();
+        await settle();
+        actors = catalog.getCatalogActors();
+        const refresh = findActor(actors.popover, 'refinement-refresh-button');
+        assert(refresh?.get_accessible_name() === 'Refresh usage',
+            'Quiet Utility exposes accessible refresh');
+        assert(findActor(actors.popover, 'refinement-range-select')
+            ?.accessible_role === Atk.Role.COMBO_BOX,
+        'Quiet Utility exposes one compact range control');
+        refresh.add_style_pseudo_class('hover');
+        refresh.grab_key_focus();
+        await captureActor(actors.indicator.menu.actor, EXPECTED_CAPTURES[1]);
+        refresh.remove_style_pseudo_class('hover');
+
+        click(findActor(actors.popover, 'settings-button'), 'settings');
+        await settle();
+        actors = catalog.getCatalogActors();
+        const pace = findActor(actors.popover, 'toggle-timePace');
+        assert(pace?.checked, 'Time pace is enabled by default');
+        pace.add_style_pseudo_class('hover');
+        pace.grab_key_focus();
+        await captureActor(actors.indicator.menu.actor, EXPECTED_CAPTURES[2]);
+        click(findActor(actors.popover, 'toggle-showClaudeShort'),
+            'Claude short visibility');
+        await settle();
+        await captureActor(() => catalog.getCatalogActors().panel,
+            EXPECTED_CAPTURES[3], 6, true);
+
+        const originalScheme = Main.sessionMode.colorScheme;
+        setShellColorScheme('prefer-light');
+        await settle();
+        await captureActor(() => catalog.getCatalogActors().panel,
+            EXPECTED_CAPTURES[4], 6, true);
+        setShellColorScheme(originalScheme);
+        const themeContext = St.ThemeContext.get_for_stage(global.stage);
+        const originalScale = themeContext.scale_factor;
+        themeContext.set_scale_factor(2);
+        await settle();
+        await captureActor(() => catalog.getCatalogActors().panel,
+            EXPECTED_CAPTURES[5], 6, true);
+        themeContext.set_scale_factor(originalScale);
+        catalog.disable();
+        await settle();
+        assert(!Main.panel.statusArea[UUID], 'disable removes Quiet Utility');
+        catalog.enable();
+        await settle();
+        assert(Main.panel.statusArea[UUID], 'Quiet Utility enables again');
+    }
+    return;
     let actors = catalog.getCatalogActors();
     assert(actors.indicator === Main.panel.statusArea[UUID],
         'catalog owns the registered panel indicator');

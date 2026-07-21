@@ -8,7 +8,7 @@
 ![GJS](https://img.shields.io/badge/built%20with-GJS-1a5fb4)
 ![Status: Claude and Codex live](https://img.shields.io/badge/status-Claude%20%2B%20Codex%20live-4a86cf)
 
-<img src="design/captures/usage-dark-100.png" width="440" alt="Claudex Usage popover showing Claude and Codex usage windows, reset times, and usage history">
+<img src="design/captures/surface-popup-dark-100.png" width="440" alt="Claudex Usage popover showing Claude and Codex usage windows, reset times, and usage history">
 
 </div>
 
@@ -65,11 +65,11 @@ proves local history and its presentation in Used or Left.
 
 | Panel indicator (dark) | Panel indicator (light) |
 | --- | --- |
-| ![Dark panel indicator](design/captures/panel-dark-100.png) | ![Light panel indicator](design/captures/panel-light-100.png) |
+| ![Dark panel indicator](design/captures/surface-panel-dark-100.png) | ![Light panel indicator](design/captures/surface-panel-light-100.png) |
 
 | Settings popover | Range focus & hover |
 | --- | --- |
-| <img src="design/captures/settings-dark-100.png" width="360" alt="Settings popover, dark theme"> | <img src="design/captures/usage-range-7d-focus-hover.png" width="360" alt="Usage history with the 7-day range focused and hovered"> |
+| <img src="design/captures/surface-settings-dark-100.png" width="360" alt="Settings popover, dark theme"> | <img src="design/captures/surface-history-stepper-dark-100.png" width="360" alt="Usage history with its inline range stepper"> |
 
 The complete evidence set lives in [`design/captures`](design/captures/README.md).
 

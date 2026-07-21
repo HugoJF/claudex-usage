@@ -1,74 +1,19 @@
-# Usage Surface Refinement Exploration
+# Quiet Utility Composition Decision
 
-Direction D remains the visual system. This developer-only exploration compares
-three static compositions for compact range selection, refresh feedback, provider
-hierarchy, compact-panel differentiation, and optional Time pace markers. It
-contains no provider access, polling, or production persistence.
+Quiet Utility is the sole executable catalog composition. It keeps refresh beside
+settings, freshness in a status-only footer, compact provider headings, a muted Claude
+5-hour panel value, an inline history range control, and optional neutral Time pace
+markers. Weekly pace remains a choice directly beneath the default-on Time pace switch.
 
-## Shared intent
+The earlier Explicit Pace and Status Rail explorations were rejected because their
+extra labels and stronger status treatment competed with the current usage values.
+They have no executable branches or retained capture evidence.
 
-- Put refresh beside settings and retain a status-only freshness footer.
-- Remove provider-detail subtitles from current-value cards.
-- Replace five always-visible history ranges with one compact select.
-- Make Claude's compact 5-hour value quieter than its weekly value.
-- Compare usage with elapsed window time through a neutral marker when the global
-  Time pace setting is on.
-- Keep the Time pace switch and place one Weekly pace choice directly beneath it;
-  Every day is the default and Weekdays is the alternate.
-- Keep the marker advisory: no target, forecast, alert, or ahead/behind judgment.
+Canonical evidence:
 
-## Variant A — Quiet Utility
+- [Compact panel](../captures/catalog-panel-dark-100.png)
+- [Usage popup](../captures/catalog-popup-dark-100.png)
+- [Settings](../captures/catalog-settings-dark-100.png)
 
-The owner-confirmed composition keeps the popup visually quiet: two flat header
-icons, an abbreviated range select, provider names without subtitles, a thin
-unlabeled marker crossing each bar, and freshness as footer metadata. The compact
-panel mutes only Claude's first percentage while stable order and accessibility name
-the window.
-
-Refresh feedback swaps the circular-arrow icon to its busy state without adding
-completion animation or moving text. Settings expose **Time pace markers** as one
-global switch, default on, with the **Weekly pace** choice directly beneath it.
-
-Review captures:
-
-- [Compact panel](../captures/usage-refinement-a-panel-dark-100.png)
-- [Usage popup](../captures/usage-refinement-a-popup-dark-100.png)
-- [Settings](../captures/usage-refinement-a-settings-dark-100.png)
-
-## Variant B — Explicit Pace
-
-The header keeps the same two icon actions but exposes visible `Refreshing…`
-microcopy during work. The range select uses `Last 6 hours`, each reset row names
-the marker as `Time pace 23%`, and the compact Claude value gains a muted `5h`
-prefix. This minimizes interpretation cost at the price of width and repeated copy.
-
-Review captures:
-
-- [Compact panel](../captures/usage-refinement-b-panel-dark-100.png)
-- [Usage popup](../captures/usage-refinement-b-popup-dark-100.png)
-
-## Variant C — Status Rail
-
-Refresh and freshness become one compact header control, the history select keeps
-the short `6h` label, and each marker uses a small `Pace` caption above the track.
-The footer disappears. This is the densest, most instrument-like option and competes
-most strongly with current usage values.
-
-Review captures:
-
-- [Compact panel](../captures/usage-refinement-c-panel-dark-100.png)
-- [Usage popup](../captures/usage-refinement-c-popup-dark-100.png)
-
-## Primitive budget
-
-**Composes:** `PopoverScaffold`, `PanelIndicator`, `ProviderCard`, `UsageMetric`,
-`ProgressBar`, `HistoryChart`, `Legend`, `IconButton`, `SettingsRow`, `Switch`,
-`ChoiceRow`, and `FooterStatus`.
-
-**Introduces:** compact select menu; optional provider detail; per-value panel tone;
-IconButton busy state; status-only FooterStatus; optional neutral ProgressBar marker.
-The Weekly pace setting reuses `ChoiceRow`. No new token is proposed: existing muted
-foreground, separator, focus, spacing, radius, and type roles cover all three variants.
-
-**CANONICAL: variant A — Quiet Utility keeps every requested signal visible with the
-least repeated copy and no new token role. Owner confirmed 2026-07-19.**
+The composition uses the existing primitives and tokens; it introduces no provider
+access, polling, persistence, target, forecast, alert, or ahead/behind judgment.

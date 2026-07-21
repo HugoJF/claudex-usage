@@ -20,7 +20,6 @@ test('catalog state starts in the selected Direction D review state', () => {
         localHistory: true,
         timePace: true,
         weeklyPace: 'Every day',
-        refinementVariant: null,
     });
 });
 
@@ -35,20 +34,6 @@ test('catalog state changes ranges and settings without persistence', () => {
     assert.throws(() => state.selectRange('forever'), /Unknown history range/);
     assert.throws(() => state.toggle('networkAccess'), /Unknown catalog toggle/);
     assert.throws(() => state.setView('provider-auth'), /Unknown catalog view/);
-});
-
-test('refinement variants reset the review state and keep Time pace toggleable', () => {
-    const state = new CatalogState();
-    state.selectRange('30d');
-    state.setView('settings');
-    state.setRefinementVariant('b');
-    assert.equal(state.snapshot().refinementVariant, 'b');
-    assert.equal(state.snapshot().view, 'usage');
-    assert.equal(state.snapshot().activeRange, '6h');
-    assert.equal(state.cycleRange(), '1d');
-    assert.equal(state.toggle('timePace'), false);
-    assert.throws(() => state.setRefinementVariant('dense'),
-        /Unknown refinement variant/);
 });
 
 test('refresh choice cycles deterministically in process-local state', () => {

@@ -23,21 +23,12 @@ if (unknownArgs.length > 0)
     throw new Error(`Unknown arguments: ${unknownArgs.join(' ')}`);
 
 const catalogCaptures = [
-    'panel-dark-100.png',
-    'usage-dark-100.png',
-    'usage-range-7d-focus-hover.png',
-    'settings-dark-100.png',
-    'settings-toggle-off-focus-hover.png',
-    'panel-visibility-off.png',
-    'panel-light-100.png',
-    'panel-dark-200.png',
-    'usage-refinement-a-panel-dark-100.png',
-    'usage-refinement-a-popup-dark-100.png',
-    'usage-refinement-a-settings-dark-100.png',
-    'usage-refinement-b-panel-dark-100.png',
-    'usage-refinement-b-popup-dark-100.png',
-    'usage-refinement-c-panel-dark-100.png',
-    'usage-refinement-c-popup-dark-100.png',
+    'catalog-panel-dark-100.png',
+    'catalog-popup-dark-100.png',
+    'catalog-settings-dark-100.png',
+    'catalog-panel-disabled.png',
+    'catalog-panel-light-100.png',
+    'catalog-panel-dark-200.png',
 ];
 const surfaceCaptures = [
     'surface-panel-dark-100.png',
