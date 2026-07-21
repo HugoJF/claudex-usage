@@ -45,6 +45,9 @@ function harness(initialNow = 1_000_000) {
         advance(milliseconds) {
             now += milliseconds;
         },
+        setNow(value) {
+            now = value;
+        },
         runTimer() {
             assert.equal(timers.size, 1, 'exactly one timer is scheduled');
             const [id, timer] = timers.entries().next().value;
@@ -791,6 +794,34 @@ test('minute alignment stays bounded and rejects clocks outside its integer doma
     for (const invalid of [-1, 1.5, NaN, Infinity,
         Number.MAX_SAFE_INTEGER + 1]) {
         assert.throws(() => nextMinuteDelay(invalid));
+    }
+});
+
+test('invalid clocks preserve readings while omitting temporal derivations', async () => {
+    const state = harness();
+    state.controller.registerProvider(provider({
+        windows: [{
+            id: 'short',
+            label: '4-minute window',
+            dataRole: 'dataClaudeShort',
+            durationMs: 240_000,
+        }],
+    }));
+    await settle();
+    assert.equal(state.timers.size, 1, 'refresh cadence remains scheduled');
+
+    for (const invalid of [NaN, Infinity, -1, 1.5,
+        Number.MAX_SAFE_INTEGER + 1]) {
+        state.setNow(invalid);
+        const snapshot = state.controller.getSnapshot();
+        const metric = snapshot.providers[0].metrics[0];
+        assert.equal(snapshot.clockValid, false);
+        assert.equal(metric.percent, 25);
+        assert.equal(metric.resetLabel, 'Reset time unavailable');
+        assert(!Object.hasOwn(metric, 'elapsedPercent'));
+        assert(!Object.hasOwn(metric, 'weekdayElapsedPercent'));
+        assert.equal(snapshot.footer, 'Update time unavailable');
+        assert.equal(state.timers.size, 1, 'invalid presentation time keeps cadence');
     }
 });
 

@@ -95,7 +95,7 @@ tokens and production geometry. Rejected executable variants and selectors are r
 - [x] `CLEAN-009` — harden history ingress, identifiers, v1 validation, and ownership.
 - [x] `CLEAN-010` — share only proven provider infrastructure.
 - [x] `CLEAN-011` — split presentation primitives and remove hidden geometry state.
-- [ ] `CLEAN-012` — make invalid-clock behavior explicit and safe.
+- [x] `CLEAN-012` — make invalid-clock behavior explicit and safe.
 - [ ] `CLEAN-013` — split controller validation, time, and state-machine concerns.
 - [ ] `CLEAN-014` — split extension composition into focused view builders.
 - [ ] `CLEAN-015` — split harness/package checks and strengthen recursive scanning.

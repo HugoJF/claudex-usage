@@ -38,6 +38,10 @@ function requireNonnegativeSafeInteger(value, name) {
     return value;
 }
 
+export function isValidClock(value) {
+    return Number.isSafeInteger(value) && value >= 0;
+}
+
 function requirePath(value, name) {
     if (typeof value !== 'string' || !SAFE_PATH.test(value))
         throw new Error(`${name} must be a safe package-relative path`);
@@ -388,6 +392,7 @@ export class SurfaceController {
 
     getSnapshot() {
         const now = this._now();
+        const clockValid = isValidClock(now);
         const providers = this._orderedEligible().map(state => {
             const {presentation, result} = state;
             const metrics = result?.status === 'available'
@@ -399,11 +404,13 @@ export class SurfaceController {
                         label: window.label,
                         percent: reading.percent,
                         resetAtMs: reading.resetAtMs,
-                        resetLabel: formatReset(reading.resetAtMs, now),
+                        resetLabel: clockValid
+                            ? formatReset(reading.resetAtMs, now)
+                            : 'Reset time unavailable',
                         dataRole: window.dataRole,
                         accessibleName: `${presentation.label} ${window.label} at ${reading.percent} percent`,
                     };
-                    if (window.durationMs !== undefined) {
+                    if (clockValid && window.durationMs !== undefined) {
                         metric.elapsedPercent = elapsedWindowPercent(
                             window.durationMs, reading.resetAtMs, now);
                         if (window.durationMs === WEEK_MS) {
@@ -424,6 +431,8 @@ export class SurfaceController {
         const hasResults = providers.some(provider => provider.availability !== 'pending');
         const footer = !hasResults
             ? 'Not checked yet'
+            : !clockValid
+                ? 'Update time unavailable'
             : anyAvailable
                 ? formatFreshness(this._lastCompletedAtMs, now)
                 : `Checked ${this._lastCompletedAtMs === null
@@ -433,6 +442,7 @@ export class SurfaceController {
             refreshing: this._refreshing,
             footer,
             visible: providers.length > 0,
+            clockValid,
         });
     }
 

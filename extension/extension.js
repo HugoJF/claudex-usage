@@ -192,7 +192,8 @@ export default class ClaudexUsageExtension extends Extension {
     _recordHistory(snapshot) {
         const justCompleted = this._wasRefreshing && !snapshot.refreshing;
         this._wasRefreshing = snapshot.refreshing;
-        if (!justCompleted || !this._preferences.localHistory || !this._history)
+        if (!justCompleted || !snapshot.clockValid ||
+            !this._preferences.localHistory || !this._history)
             return;
         const samples = [];
         for (const provider of snapshot.providers) {
@@ -260,7 +261,7 @@ export default class ClaudexUsageExtension extends Extension {
             findActor(this._popoverHost, this._historyRangeFocusId)?.grab_key_focus();
             this._historyRangeFocusId = null;
         }
-        this._syncPresentationTimer();
+        this._syncPresentationTimer(snapshot);
     }
 
     _usagePopover(snapshot) {
@@ -529,9 +530,10 @@ export default class ClaudexUsageExtension extends Extension {
             'open-state-changed', (_menu, open) => {
                 if (!this._controller)
                     return;
+                const snapshot = this._controller.getSnapshot();
                 if (open && this._view === 'usage')
-                    this._updateTemporalPresentation(this._controller.getSnapshot());
-                this._syncPresentationTimer();
+                    this._updateTemporalPresentation(snapshot);
+                this._syncPresentationTimer(snapshot);
             });
         Main.panel.addToStatusArea(this.uuid, this._indicator, 0, 'right');
     }
@@ -553,8 +555,13 @@ export default class ClaudexUsageExtension extends Extension {
         return this._view === 'usage' && this._indicator?.menu.isOpen === true;
     }
 
-    _syncPresentationTimer() {
+    _syncPresentationTimer(snapshot = null) {
         if (!this._usagePopupVisible()) {
+            this._clearPresentationTimer();
+            return;
+        }
+        snapshot ??= this._controller?.getSnapshot();
+        if (!snapshot?.clockValid) {
             this._clearPresentationTimer();
             return;
         }
@@ -570,8 +577,9 @@ export default class ClaudexUsageExtension extends Extension {
         this._presentationSourceId = null;
         if (!this._controller || !this._usagePopupVisible())
             return GLib.SOURCE_REMOVE;
-        this._updateTemporalPresentation(this._controller.getSnapshot());
-        this._syncPresentationTimer();
+        const snapshot = this._controller.getSnapshot();
+        this._updateTemporalPresentation(snapshot);
+        this._syncPresentationTimer(snapshot);
         return GLib.SOURCE_REMOVE;
     }
 
