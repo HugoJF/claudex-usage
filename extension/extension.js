@@ -21,6 +21,7 @@ import {
     setProgressBarPace,
     SettingsRow,
 } from './shared/primitives.js';
+import {HistoryRangeStepper} from './shared/history-range-stepper.js';
 import {
     displayPercent,
     HISTORY_RANGES,
@@ -325,38 +326,14 @@ export default class ClaudexUsageExtension extends Extension {
             x_expand: true,
         });
         head.add_child(label('Usage history', 'selected-section-title', {x_expand: true}));
-        const rangeStepper = new St.BoxLayout({
-            name: 'history-range-stepper',
-            style_class: 'claudex-history-range-stepper',
-            orientation: Clutter.Orientation.HORIZONTAL,
-            x_align: Clutter.ActorAlign.END,
-        });
-        const step = (direction, text, accessibleName) => {
-            const controlId = `history-range-${direction}`;
-            const control = new St.Button({
-                name: controlId,
-                label: text,
-                style_class: 'claudex-history-range-step',
-                can_focus: true,
-                reactive: true,
-                track_hover: true,
-            });
-            control.set_accessible_name(accessibleName);
-            control.connect('clicked', () => {
-                const delta = direction === 'previous' ? -1 : 1;
-                const next = (range.index + delta + HISTORY_RANGES.length) %
-                    HISTORY_RANGES.length;
+        head.add_child(HistoryRangeStepper({
+            choices: HISTORY_RANGES,
+            selected: range,
+            onSelect: (next, controlId) => {
                 this._historyRangeFocusId = controlId;
-                this._settings.set_enum('history-range', next);
-            });
-            rangeStepper.add_child(control);
-        };
-        step('previous', '<', 'Previous history range');
-        rangeStepper.add_child(label(range.label, 'selected-choice-value', {
-            name: 'history-range-value',
+                this._settings.set_enum('history-range', next.index);
+            },
         }));
-        step('next', '>', 'Next history range');
-        head.add_child(rangeStepper);
         section.add_child(head);
         if (series.length === 0) {
             section.add_child(new St.Label({

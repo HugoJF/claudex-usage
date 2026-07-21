@@ -42,7 +42,8 @@ export default [
             'design/direction-lab/stylesheet.css',
             // Removed slice-by-slice as the first-party modules are decomposed.
             'design/direction-lab/{catalog-state,extension}.js',
-            'extension/**',
+            'extension/*.js',
+            'extension/shared/{primitives,token-geometry}.js',
             'scripts/**',
             'tests/unit/**',
             'tests/journeys/**',
@@ -68,6 +69,19 @@ export default [
             ecmaVersion: 'latest',
             sourceType: 'module',
             globals: nodeGlobals,
+        },
+        linterOptions: {
+            noInlineConfig: true,
+            reportUnusedDisableDirectives: 'error',
+        },
+        rules: commonRules,
+    },
+    {
+        files: ['extension/shared/history-range-stepper.js'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: gjsGlobals,
         },
         linterOptions: {
             noInlineConfig: true,
