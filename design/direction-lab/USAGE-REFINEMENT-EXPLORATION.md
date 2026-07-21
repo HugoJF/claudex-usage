@@ -13,6 +13,8 @@ contains no provider access, polling, or production persistence.
 - Make Claude's compact 5-hour value quieter than its weekly value.
 - Compare usage with elapsed window time through a neutral marker when the global
   Time pace setting is on.
+- Keep the Time pace switch and place one Weekly pace choice directly beneath it;
+  Every day is the default and Weekdays is the alternate.
 - Keep the marker advisory: no target, forecast, alert, or ahead/behind judgment.
 
 ## Variant A — Quiet Utility
@@ -25,7 +27,7 @@ the window.
 
 Refresh feedback swaps the circular-arrow icon to its busy state without adding
 completion animation or moving text. Settings expose **Time pace markers** as one
-global switch, default on.
+global switch, default on, with the **Weekly pace** choice directly beneath it.
 
 Review captures:
 
@@ -65,8 +67,8 @@ Review captures:
 
 **Introduces:** compact select menu; optional provider detail; per-value panel tone;
 IconButton busy state; status-only FooterStatus; optional neutral ProgressBar marker.
-No new token is proposed: existing muted foreground, separator, focus, spacing,
-radius, and type roles cover all three variants.
+The Weekly pace setting reuses `ChoiceRow`. No new token is proposed: existing muted
+foreground, separator, focus, spacing, radius, and type roles cover all three variants.
 
 **CANONICAL: variant A — Quiet Utility keeps every requested signal visible with the
 least repeated copy and no new token role. Owner confirmed 2026-07-19.**

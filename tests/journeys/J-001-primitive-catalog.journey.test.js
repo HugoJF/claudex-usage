@@ -257,8 +257,18 @@ export async function run() {
     assert(paceToggle?.checked &&
         collectLabelText(actors.popover).includes('Time pace markers'),
     'variant A settings expose Time pace enabled by default');
+    const weeklyPace = findActor(actors.popover, 'weekly-pace-choice');
+    assert(weeklyPace?.get_accessible_name() === 'Weekly pace, Every day' &&
+        collectLabelText(weeklyPace).includes('Every day  ›'),
+    'variant A places the default weekly pace choice beneath Time pace');
+    click(weeklyPace, 'weekday pace');
+    await settle();
+    actors = catalog.getCatalogActors();
+    assert(findActor(actors.popover, 'weekly-pace-choice')?.get_accessible_name() ===
+        'Weekly pace, Weekdays',
+    'weekly pace choice exposes its alternate state in place');
     await captureActor(actors.indicator.menu.actor, EXPECTED_CAPTURES[10]);
-    click(paceToggle, 'Time pace off');
+    click(findActor(actors.popover, 'toggle-timePace'), 'Time pace off');
     await settle();
     actors = catalog.getCatalogActors();
     click(findActor(actors.popover, 'back-button'), 'variant A settings back');

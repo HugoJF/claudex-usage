@@ -4,7 +4,7 @@ type: product-brief
 status: delivered
 owner: hugo
 created: 2026-07-16
-updated: 2026-07-17
+updated: 2026-07-21
 source_docs:
   - docs/product/pitch.md
   - docs/product/feature-horizon.md
@@ -78,6 +78,9 @@ capability:
   spec and decision-log territory.
 - Time pace is an optional visual comparison between utilization and the elapsed
   portion of a provider window. It is not a quota target, forecast, or alert.
+- Weekly Time pace can follow every day or local weekdays so a user's chosen working
+  schedule, rather than weekends, determines the comparison; shorter rolling windows
+  always follow elapsed clock time.
 
 ## Feature Bundles
 

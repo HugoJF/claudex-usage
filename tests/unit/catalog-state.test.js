@@ -19,6 +19,7 @@ test('catalog state starts in the selected Direction D review state', () => {
         presentOnly: true,
         localHistory: true,
         timePace: true,
+        weeklyPace: 'Every day',
         refinementVariant: null,
     });
 });
@@ -55,6 +56,12 @@ test('refresh choice cycles deterministically in process-local state', () => {
     assert.equal(state.cycleRefreshInterval(), '10 min');
     assert.equal(state.cycleRefreshInterval(), '15 min');
     assert.equal(state.cycleRefreshInterval(), '5 min');
+});
+
+test('weekly pace cycles between every day and weekdays', () => {
+    const state = new CatalogState();
+    assert.equal(state.cycleWeeklyPace(), 'Weekdays');
+    assert.equal(state.cycleWeeklyPace(), 'Every day');
 });
 
 test('progress geometry clamps, rounds, and stays monotonic at multiple widths', () => {

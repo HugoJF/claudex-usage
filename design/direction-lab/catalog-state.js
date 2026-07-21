@@ -63,6 +63,7 @@ export class CatalogState {
         this.presentOnly = true;
         this.localHistory = true;
         this.timePace = true;
+        this.weeklyPace = 'Every day';
         this.refinementVariant = null;
     }
 
@@ -91,6 +92,7 @@ export class CatalogState {
         this.view = 'usage';
         this.activeRange = '6h';
         this.timePace = true;
+        this.weeklyPace = 'Every day';
     }
 
     toggle(key) {
@@ -107,6 +109,11 @@ export class CatalogState {
         return this.refreshInterval;
     }
 
+    cycleWeeklyPace() {
+        this.weeklyPace = this.weeklyPace === 'Every day' ? 'Weekdays' : 'Every day';
+        return this.weeklyPace;
+    }
+
     snapshot() {
         return Object.freeze({
             view: this.view,
@@ -118,6 +125,7 @@ export class CatalogState {
             presentOnly: this.presentOnly,
             localHistory: this.localHistory,
             timePace: this.timePace,
+            weeklyPace: this.weeklyPace,
             refinementVariant: this.refinementVariant,
         });
     }

@@ -493,6 +493,13 @@ function buildRefinementSettingsPopover({state, tokens, actions,
         onToggle: actions.toggle,
         tokens,
     }));
+    displaySection.add_child(ChoiceRow({
+        id: 'weekly-pace-choice',
+        title: 'Weekly pace',
+        value: `${state.weeklyPace}  ›`,
+        accessibleName: `Weekly pace, ${state.weeklyPace}`,
+        onActivate: actions.cycleWeeklyPace,
+    }));
 
     const historySection = column('selected-settings-section');
     historySection.add_child(label('HISTORY', 'selected-settings-kicker'));
@@ -916,6 +923,10 @@ export default class ClaudexUsageCatalogExtension extends Extension {
             },
             cycleRefreshInterval: () => {
                 this._state.cycleRefreshInterval();
+                this._render();
+            },
+            cycleWeeklyPace: () => {
+                this._state.cycleWeeklyPace();
                 this._render();
             },
             refresh: () => this._render(),

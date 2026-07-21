@@ -1,10 +1,10 @@
 ---
 id: SPEC-USAGE-SURFACE
 type: spec
-status: done
+status: draft
 owner: hugo
 created: 2026-07-16
-updated: 2026-07-20
+updated: 2026-07-21
 source_docs:
   - docs/product/briefs/2026-07-16-live-usage.md
   - design/direction-lab/DIRECTION-BRIEF.md
@@ -35,7 +35,8 @@ Acceptance:
   role, and shows newly eligible values without waiting for cadence.
 - **J-002.2** Compact provider cards omit redundant provider detail; each visible
   window shows its percentage, zero-origin bar, reset time, and an optional neutral
-  Time pace marker derived from that window's elapsed time.
+  Time pace marker. Weekly markers follow the selected Every day or Weekdays
+  schedule; shorter rolling windows always follow elapsed clock time.
 - **J-002.3** A refresh icon beside settings requests fresh values and exposes its
   in-flight state. Freshness, reset copy, and Time pace advance while visible without
   a provider request.
@@ -57,10 +58,13 @@ Acceptance:
   percentage immediately while retaining used percentages as canonical source data.
 - **J-003.4** A global Time pace setting defaults on and removes or restores every
   marker immediately without a provider refresh.
-- **J-003.5** The refresh-cadence row presents a fixed enumerated choice set and
+- **J-003.5** A weekly-pace schedule defaults to Every day; choosing Weekdays updates
+  weekly markers immediately, excludes local Saturdays and Sundays, and leaves
+  shorter rolling-window markers unchanged.
+- **J-003.6** The refresh-cadence row presents a fixed enumerated choice set and
   applies the selection without restart.
-- **J-003.6** Visibility, usage-display, Time pace, and cadence choices survive a
-  GNOME Shell restart via the storage named in Architecture.
+- **J-003.7** Visibility, usage-display, Time pace, weekly-pace schedule, and cadence
+  choices survive a GNOME Shell restart via the storage named in Architecture.
 
 ## Surface Map
 
@@ -74,8 +78,8 @@ Acceptance:
 - Current and historical percentages — selected Used or Left presentation without
   changing provider or history data.
 - Unavailable card state — dimmed textual notice, no values.
-- Settings view — back action, three limit-visibility rows, refresh-cadence and
-  usage-display choices, plus the global Time pace switch.
+- Settings view — back action, three limit-visibility rows, refresh-cadence,
+  usage-display, and weekly-pace choices, plus the global Time pace switch.
 
 ## Cross-Journey Acceptance
 
@@ -86,6 +90,8 @@ Acceptance:
 
 Canonical reference: [Usage refinement, variant A — Quiet Utility](../../../design/direction-lab/USAGE-REFINEMENT-EXPLORATION.md#variant-a--quiet-utility),
 within [Direction D — Selected Blend](../../../design/direction-lab/DIRECTION-BRIEF.md#d--selected-blend).
+The approved settings composition places the Weekly pace `ChoiceRow` directly beneath
+the existing Time pace switch.
 
 Primitives composed: `PopoverScaffold`, `PanelIndicator`, `ProviderGroup`,
 `ProviderCard`, `UsageMetric`, `ProgressBar`, `IconButton`, `SettingsRow`,
@@ -100,7 +106,8 @@ ProgressBar marker. Shared changes land only in their owning slices.
 - API: [API contracts](../../engineering/api-contracts.md) — delta: add the
   fixed duration of each declared provider window for Time pace presentation.
 - Data: [data model](../../engineering/data-model.md) — delta: persisted panel
-  preferences add one global, default-on Time pace boolean; no pace value is stored.
+  preferences add one global, default-on Time pace boolean and one default Every day
+  weekly-pace schedule; no pace value is stored.
 - Decisions: [decision log](../../engineering/decision-log.md) — cadence value set
   and default, production extension UUID; recorded at implementation.
 
@@ -149,6 +156,10 @@ ProgressBar marker. Shared changes land only in their owning slices.
   built-ins, and derive bounded elapsed percentage. Medium: ≤12 files / 500 lines.
 - [x] `SURF-009` — add default-on Time pace markers that follow Used/Left and the
   visible tick without changing usage. Medium: ≤15 files / 800 lines.
+- [ ] `SURF-010` — persist an Every day or Weekdays weekly-pace schedule and apply it
+  immediately to weekly markers using the local calendar while shorter rolling
+  windows retain elapsed-clock pace. Medium: one temporal presentation invariant,
+  at most 15 edited files and 700 handwritten lines. Depends on `SURF-009`.
 
 ## Non-Scope
 

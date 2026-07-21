@@ -39,7 +39,9 @@ Owning Spec: [SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)
    and Claude's compact 5-hour value is visually quieter than its weekly value.
 2. The user opens the popup and reviews compact provider cards: each named window has
    its percentage, zero-origin bar, reset time, and — while Time pace is enabled — a
-   neutral marker comparing utilization with elapsed window time.
+   neutral marker comparing utilization with elapsed window time. Weekly markers use
+   the selected Every day or Weekdays schedule; shorter rolling windows always use
+   elapsed clock time.
 3. The user triggers the refresh action beside settings; its busy state, current
    values, freshness text, reset countdowns, and time markers update in place without
    the popup closing, moving keyboard focus, collapsing an open range select, or a
@@ -61,10 +63,13 @@ Owning Spec: [SPEC-USAGE-SURFACE](specs/2026-07-16-usage-surface.md)
    while recorded usage remains unchanged.
 4. The user turns Time pace off or on; every current bar removes or restores its
    marker immediately without refreshing a provider.
-5. The user changes the refresh-cadence choice; the new cadence applies without a
+5. The user changes weekly pace from Every day to Weekdays; weekly markers update
+   immediately around local weekends while shorter rolling-window markers do not
+   change.
+6. The user changes the refresh-cadence choice; the new cadence applies without a
    restart.
-6. After GNOME Shell restarts, the panel and popup honor the persisted visibility,
-   usage-display, Time pace, and cadence choices.
+7. After GNOME Shell restarts, the panel and popup honor the persisted visibility,
+   usage-display, Time pace, weekly-pace schedule, and cadence choices.
 
 ## J-004 — See Codex usage
 
