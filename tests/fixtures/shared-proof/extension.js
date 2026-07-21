@@ -3,13 +3,9 @@ import Gio from 'gi://Gio';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {HistoryRangeStepper} from './shared/history-range-stepper.js';
+import {HISTORY_RANGES} from './shared/history-ranges.js';
 import {PanelIndicator, PopoverScaffold} from './shared/primitives.js';
 import {validateTokens} from './shared/token-geometry.js';
-
-const RANGES = Object.freeze([
-    Object.freeze({index: 0, id: 'burst', label: 'Burst'}),
-    Object.freeze({index: 1, id: 'season', label: 'Season'}),
-]);
 
 function loadTokens(extensionPath) {
     const file = Gio.File.new_for_path(`${extensionPath}/tokens.json`);
@@ -35,8 +31,8 @@ export default class SharedProofExtension extends Extension {
             tokens,
         });
         this.range = HistoryRangeStepper({
-            choices: RANGES,
-            selected: RANGES[1],
+            choices: HISTORY_RANGES,
+            selected: HISTORY_RANGES[1],
             onSelect: (range, controlId) => this.events.push([range.id, controlId]),
         });
         this.root = PopoverScaffold({

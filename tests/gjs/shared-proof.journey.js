@@ -38,7 +38,7 @@ export async function run() {
     next.emit('clicked', 1);
     previous.emit('clicked', 1);
     assert(JSON.stringify(proof.events) === JSON.stringify([
-        ['burst', 'history-range-next'],
-        ['burst', 'history-range-previous'],
+        ['1d', 'history-range-next'],
+        ['1h', 'history-range-previous'],
     ]), 'stepper wraps and reports stable IDs without catalog state');
 }

@@ -8,7 +8,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {CatalogState, HISTORY, RANGES, USAGE} from './catalog-state.js';
+import {CatalogState, HISTORY, USAGE} from './catalog-state.js';
+import {HISTORY_RANGES} from './shared/history-ranges.js';
 import {progressWidth, validateTokens} from './shared/token-geometry.js';
 import {
     ChoiceRow,
@@ -570,10 +571,9 @@ function buildUsagePopover({state, extensionPath, tokens, actions}) {
     historyHeader.add_child(label('Usage history', 'selected-section-title', {
         x_expand: true,
     }));
-    const ranges = RANGES.map((id, index) => ({id, index, label: id}));
     historyHeader.add_child(HistoryRangeStepper({
-        choices: ranges,
-        selected: ranges.find(range => range.id === state.activeRange),
+        choices: HISTORY_RANGES,
+        selected: HISTORY_RANGES.find(range => range.id === state.activeRange),
         onSelect: range => actions.selectRange(range.id),
     }));
     history.add_child(historyHeader);
@@ -731,7 +731,7 @@ function loadTokens(extensionPath) {
 export default class ClaudexUsageCatalogExtension extends Extension {
     enable() {
         this._tokens = loadTokens(this.path);
-        this._state = new CatalogState();
+        this._state = new CatalogState(HISTORY_RANGES);
         this._panelSignature = null;
         this._colorSchemeChangedId = St.Settings.get().connect(
             'notify::color-scheme', () => this._render());

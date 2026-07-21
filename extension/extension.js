@@ -22,9 +22,9 @@ import {
     SettingsRow,
 } from './shared/primitives.js';
 import {HistoryRangeStepper} from './shared/history-range-stepper.js';
+import {HISTORY_RANGES} from './shared/history-ranges.js';
 import {
     displayPercent,
-    HISTORY_RANGES,
     isPreferenceKey,
     nextRefreshInterval,
     nextUsageDisplay,

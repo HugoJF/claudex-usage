@@ -4,7 +4,6 @@ export const LIMIT_KEYS = Object.freeze([
     'showCodexWeekly',
 ]);
 
-export const RANGES = Object.freeze(['1h', '6h', '1d', '7d', '30d']);
 
 export const USAGE = Object.freeze({
     claudeShort: Object.freeze({
@@ -52,9 +51,12 @@ export const HISTORY = Object.freeze({
 });
 
 export class CatalogState {
-    constructor() {
+    constructor(historyRanges) {
+        if (!Array.isArray(historyRanges) || historyRanges.length === 0)
+            throw new Error('Catalog history ranges must be nonempty');
+        this.historyRanges = historyRanges;
         this.view = 'usage';
-        this.activeRange = '6h';
+        this.activeRange = historyRanges[1].id;
         this.refreshInterval = '5 min';
         this.showClaudeShort = true;
         this.showClaudeWeekly = true;
@@ -72,14 +74,14 @@ export class CatalogState {
     }
 
     selectRange(range) {
-        if (!RANGES.includes(range))
+        if (!this.historyRanges.some(choice => choice.id === range))
             throw new Error(`Unknown history range: ${range}`);
         this.activeRange = range;
     }
 
     cycleRange() {
-        const index = RANGES.indexOf(this.activeRange);
-        this.activeRange = RANGES[(index + 1) % RANGES.length];
+        const index = this.historyRanges.findIndex(range => range.id === this.activeRange);
+        this.activeRange = this.historyRanges[(index + 1) % this.historyRanges.length].id;
         return this.activeRange;
     }
 

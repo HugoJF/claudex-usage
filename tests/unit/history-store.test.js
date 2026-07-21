@@ -5,13 +5,13 @@ import {
     deserializeStore,
     emptyStore,
     hasSamples,
-    HISTORY_RANGES,
     recordSample,
     RETENTION_MS,
     SERIES_POINTS,
     serializeStore,
     seriesForRange,
 } from '../../extension/history-store.js';
+import {HISTORY_RANGES} from '../../extension/shared/history-ranges.js';
 
 function build(samples) {
     return samples.reduce((store, sample) => recordSample(store, sample), emptyStore());

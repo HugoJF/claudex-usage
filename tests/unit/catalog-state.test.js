@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {CatalogState} from '../../design/direction-lab/catalog-state.js';
+import {HISTORY_RANGES} from '../../extension/shared/history-ranges.js';
 import {
     colorToRgba,
     progressWidth,
 } from '../../extension/shared/token-geometry.js';
 
 test('catalog state starts in the selected Direction D review state', () => {
-    const state = new CatalogState();
+    const state = new CatalogState(HISTORY_RANGES);
     assert.deepEqual(state.snapshot(), {
         view: 'usage',
         activeRange: '6h',
@@ -24,7 +25,7 @@ test('catalog state starts in the selected Direction D review state', () => {
 });
 
 test('catalog state changes ranges and settings without persistence', () => {
-    const state = new CatalogState();
+    const state = new CatalogState(HISTORY_RANGES);
     state.selectRange('7d');
     state.toggle('showClaudeShort');
     state.setView('settings');
@@ -37,14 +38,14 @@ test('catalog state changes ranges and settings without persistence', () => {
 });
 
 test('refresh choice cycles deterministically in process-local state', () => {
-    const state = new CatalogState();
+    const state = new CatalogState(HISTORY_RANGES);
     assert.equal(state.cycleRefreshInterval(), '10 min');
     assert.equal(state.cycleRefreshInterval(), '15 min');
     assert.equal(state.cycleRefreshInterval(), '5 min');
 });
 
 test('weekly pace cycles between every day and weekdays', () => {
-    const state = new CatalogState();
+    const state = new CatalogState(HISTORY_RANGES);
     assert.equal(state.cycleWeeklyPace(), 'Weekdays');
     assert.equal(state.cycleWeeklyPace(), 'Every day');
 });

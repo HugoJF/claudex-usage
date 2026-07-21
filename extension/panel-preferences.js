@@ -1,3 +1,5 @@
+import {HISTORY_RANGES} from './shared/history-ranges.js';
+
 export const PANEL_LIMITS = Object.freeze([
     Object.freeze({
         id: 'showClaudeShort',
@@ -34,14 +36,6 @@ export const HISTORY_RANGE_KEY = 'history-range';
 export const USAGE_DISPLAY_KEY = 'usage-display';
 export const TIME_PACE_KEY = 'show-time-pace';
 export const WEEKLY_PACE_KEY = 'weekly-pace';
-
-export const HISTORY_RANGES = Object.freeze([
-    Object.freeze({index: 0, id: '1h', label: '1h'}),
-    Object.freeze({index: 1, id: '6h', label: '6h'}),
-    Object.freeze({index: 2, id: '1d', label: '1d'}),
-    Object.freeze({index: 3, id: '7d', label: '7d'}),
-    Object.freeze({index: 4, id: '30d', label: '30d'}),
-]);
 
 const USAGE_DISPLAYS = Object.freeze([
     Object.freeze({index: 0, id: 'used', label: 'Used'}),

@@ -1,10 +1,4 @@
-export const HISTORY_RANGES = Object.freeze([
-    Object.freeze({id: '1h', spanMs: 60 * 60 * 1000}),
-    Object.freeze({id: '6h', spanMs: 6 * 60 * 60 * 1000}),
-    Object.freeze({id: '1d', spanMs: 24 * 60 * 60 * 1000}),
-    Object.freeze({id: '7d', spanMs: 7 * 24 * 60 * 60 * 1000}),
-    Object.freeze({id: '30d', spanMs: 30 * 24 * 60 * 60 * 1000}),
-]);
+import {HISTORY_RANGES} from './shared/history-ranges.js';
 export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 export const SERIES_POINTS = 30;
 const MAX_SAMPLES = 5000;

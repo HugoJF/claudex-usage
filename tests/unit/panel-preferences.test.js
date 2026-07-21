@@ -18,6 +18,7 @@ import {
     weeklyPace,
     nextWeeklyPace,
 } from '../../extension/panel-preferences.js';
+import {DEFAULT_HISTORY_RANGE, HISTORY_RANGES} from '../../extension/shared/history-ranges.js';
 
 function settings({booleans = {}, interval = 0, range = 0, display = 0,
     pace = 0} = {}) {
@@ -64,7 +65,17 @@ test('history preferences expose the local-history flag and selected range', () 
         booleans: {'show-usage-history': false}, range: 3,
     }));
     assert.equal(snapshot.localHistory, false);
-    assert.deepEqual(snapshot.historyRange, {index: 3, id: '7d', label: '7d'});
+    assert.equal(snapshot.historyRange, HISTORY_RANGES[3]);
+    assert.equal(historyRange(1), DEFAULT_HISTORY_RANGE);
+    assert.deepEqual(HISTORY_RANGES.map(range => [range.index, range.id, range.label,
+        range.spanMs]), [
+        [0, '1h', '1h', 3_600_000],
+        [1, '6h', '6h', 21_600_000],
+        [2, '1d', '1d', 86_400_000],
+        [3, '7d', '7d', 604_800_000],
+        [4, '30d', '30d', 2_592_000_000],
+    ]);
+    assert(Object.isFrozen(HISTORY_RANGES) && HISTORY_RANGES.every(Object.isFrozen));
     assert.equal(historyRange(0).id, '1h');
     assert.equal(historyRangeIndex('30d'), 4);
     assert.throws(() => historyRange(5));
